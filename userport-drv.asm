@@ -76,22 +76,16 @@ flag_isr:
     lda CIA2.PORTA   // set PA2 to low to signal we're busy receiving
     and #%11111011
     sta CIA2.PORTA
-
-    set_color(1);
     ldy #$00
     lda CIA2.PORTB
     sta (buffer), y
-    inc buffer      // just $ff bytes for now
-    lda buffer
-    cmp #$00
+    inc buffer      
     bne !+
     inc buffer + 1
-    inc $d020
 !:
     lda buffer + 1
     cmp len + 1
     bne out
-    inc $d021
     lda buffer
     cmp len
     bne out
@@ -109,30 +103,5 @@ out:
     // done
     restore_regs()
     rti
-
-* = $3000
-test:
-    ldy #$13
-    lda $fd
-    sta (buffer), y
-    inc buffer      // just $ff bytes for now
-    bne !+
-    inc buffer + 1
-    inc $d020
-!:
-    lda buffer + 1
-    cmp len + 1
-    bne out2
-    inc $d021
-    lda buffer
-    cmp len
-    bne out2
-    // reset rcv buffer
-    lda parport.dest
-    sta buffer
-    lda parport.dest + 1
-    sta buffer + 1
-out2:
-    rts
-    
+  
 }
