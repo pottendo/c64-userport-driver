@@ -1,6 +1,6 @@
 #import "pottendos_utils.asm"
 
-.macro start_isr(dest, len) {
+.macro uport_read(dest, len) {
     lda #<dest
     ldy #>dest
     sta parport.len
@@ -23,8 +23,22 @@
     inc $d020    
     jsr parport.start_isr
 }
-.macro stop_isr() {
+
+.macro uport_stop() {
     jsr parport.stop_isr
+}
+
+.macro uport_write(from, len) {
+    lda #<from
+    ldy #>from
+    sta parport.buffer
+    sty parport.buffer + 1
+    lda #<len
+    ldy #>len
+    sta parport.len
+    sty parport.len + 1
+
+    jsr parport.start_write
 }
 
 parport: {
@@ -42,7 +56,7 @@ start_isr:
     sta STD.NMI_VEC + 1
 
     lda #$00        // direction bit 0 -> input
-    sta CIA2.DIR
+    sta CIA2.DIRB
 
     lda CIA2.PORTA   // set PA2 to high to signal we're ready to receive
     ora #%00000100
@@ -90,18 +104,66 @@ flag_isr:
     cmp len
     bne out
     // reset rcv buffer
-    lda parport.dest
-    sta buffer
-    lda parport.dest + 1
-    sta buffer + 1
+    //lda parport.dest
+    //sta buffer
+    //lda parport.dest + 1
+    //sta buffer + 1
+    uport_stop()
+    jmp !+
 out:
-
     lda CIA2.PORTA   // set PA2 to high to signal we're ready to receive
     ora #%00000100
     sta CIA2.PORTA
 
     // done
+!:
     restore_regs()
     rti
-  
+
+start_write:
+    // sanity check for len == 0
+    lda len + 1
+    bne cont
+    lda len
+    bne cont
+    rts
+cont:
+
+    uport_stop()     // ensure that NMIs are not handled
+    lda CIA2.PORTA   // set PA2 to high
+    ora #%00000100
+    sta CIA2.PORTA
+    lda #$ff        // direction bit 1 -> output
+    sta CIA2.DIRB
+
+loop:    
+    lda #%10000     // check if receiver is read to accept next char
+    bit CIA2.ICR
+    beq *-3
+
+    inc VIC.BoC
+
+    ldy #$00
+    lda (buffer), y
+    sta CIA2.PORTB
+
+    lda CIA2.PORTA  // toggle PA2 line to signal that a char is ready
+    and #%11111011
+    sta CIA2.PORTA
+    ora #%00000100
+    sta CIA2.PORTA
+
+    inc buffer
+    bne !+
+    inc buffer + 1
+!:
+    dec len
+    bne loop
+    lda len + 1
+    beq done
+    dec len + 1
+    jmp loop
+done:
+    set_color(VIC.BoC, 14)
+    rts
 }
