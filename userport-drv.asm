@@ -29,18 +29,12 @@
 }
 
 .macro uport_write(from, len) {
-    lda #<from
-    ldy #>from
-    sta parport.buffer
-    sty parport.buffer + 1
-    lda #<len
-    ldy #>len
-    sta parport.len
-    sty parport.len + 1
-
+    poke16(parport.buffer, from)
+    poke16(parport.len, len)
     jsr parport.start_write
 }
 
+*=$2500
 parport: {
     .label buffer = $fe   // pointer to destination buffer
 len:
@@ -48,35 +42,19 @@ len:
 dest:
     .word $0400     // destination address
 start_isr:
-    lda #$7f        // stop all interrupts
-    sta CIA2.ICR
-    lda #<flag_isr  // setup isr for FLAG PIN
-    sta STD.NMI_VEC
-    lda #>flag_isr
-    sta STD.NMI_VEC + 1
-
-    lda #$00        // direction bit 0 -> input
-    sta CIA2.DIRB
-
-    lda CIA2.PORTA   // set PA2 to high to signal we're ready to receive
-    ora #%00000100
-    sta CIA2.PORTA
-
-    lda CIA2.ICR    // clear interrupt flags by reading
-    lda #%10010000  // set FLAG pin as interrupt source
-    sta CIA2.ICR    // enable interrupts for FLAG line
-
+    poke8(CIA2.ICR, $7f)            // stop all interrupts
+    poke16(STD.NMI_VEC, flag_isr)   // reroute NMI
+    poke8(CIA2.DIRB, $00)           // direction bit 0 -> input
+    setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're ready to receive
+    lda CIA2.ICR                    // clear interrupt flags by reading
+    poke8(CIA2.ICR, %10010000)      // enable FLAG pin as interrupt source
     rts
 
 stop_isr:
-    lda #$7f        // stop all interrupts
-    sta CIA2.ICR
-    lda #<STD.NMI
-    sta STD.NMI_VEC
-    lda #>STD.NMI
-    sta STD.NMI_VEC + 1
-    lda #$80
-    sta CIA2.ICR    // enable interrupts    
+    poke8(CIA2.ICR, $7f)            // stop all interrupts
+    poke16(STD.NMI_VEC, STD.NMI)    // reroute NMI
+    poke8(CIA2.DIRB, $00)           // direction bits 0 -> input
+    poke8(CIA2.ICR, $80)            // enable interrupts    
     rts
     
 flag_isr:
@@ -87,11 +65,9 @@ flag_isr:
     jmp STD.NMI
     // receive char now
 !:
-    lda CIA2.PORTA   // set PA2 to low to signal we're busy receiving
-    and #%11111011
-    sta CIA2.PORTA
+    clearbits(CIA2.PORTA, %11111011)   // set PA2 to low to signal we're busy receiving
     ldy #$00
-    lda CIA2.PORTB
+    lda CIA2.PORTB  // read chr from the parallel input
     sta (buffer), y
     inc buffer      
     bne !+
@@ -111,10 +87,7 @@ flag_isr:
     uport_stop()
     jmp !+
 out:
-    lda CIA2.PORTA   // set PA2 to high to signal we're ready to receive
-    ora #%00000100
-    sta CIA2.PORTA
-
+    setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're ready to receive
     // done
 !:
     restore_regs()
@@ -128,13 +101,9 @@ start_write:
     bne cont
     rts
 cont:
-
-    uport_stop()     // ensure that NMIs are not handled
-    lda CIA2.PORTA   // set PA2 to high
-    ora #%00000100
-    sta CIA2.PORTA
-    lda #$ff        // direction bit 1 -> output
-    sta CIA2.DIRB
+    uport_stop()                    // ensure that NMIs are not handled
+    setbits(CIA2.PORTA,%00000100)   // set PA2 to high
+    poke8(CIA2.DIRB, $ff)           // direction bits 1 -> output
 
 loop:    
     lda #%10000     // check if receiver is read to accept next char
@@ -147,10 +116,8 @@ loop:
     lda (buffer), y
     sta CIA2.PORTB
 
-    lda CIA2.PORTA  // toggle PA2 line to signal that a char is ready
-    and #%11111011
-    sta CIA2.PORTA
-    ora #%00000100
+    clearbits(CIA2.PORTA, %11111011)
+    ora #%00000100                  // toggle PA2 line to signal that a char is ready
     sta CIA2.PORTA
 
     inc buffer
@@ -164,6 +131,6 @@ loop:
     dec len + 1
     jmp loop
 done:
-    set_color(VIC.BoC, 14)
+    poke8(VIC.BoC, 14)
     rts
 }

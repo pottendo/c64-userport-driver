@@ -1,19 +1,15 @@
 #import "pottendos_utils.asm"
 
 .macro init_screen(l1, l2, mode_fun, rest_fun) {
-    lda #<mode_fun
-    ldy #>mode_fun
-    sta screen.cb_mf + 1   // modify operand
-    sty screen.cb_mf + 2
-    lda #<rest_fun
-    ldy #>rest_fun
-    sta screen.cb_rf + 1   // modify operand
-    sty screen.cb_rf + 2
-    lda #l2
-    sta screen.line2
-    lda #l1
-    sta screen.line1
+    poke16(screen.cb_mf + 1, mode_fun)  // modify operand
+    poke16(screen.cb_rf + 1, rest_fun)  // modify operand
+    poke8(screen.line2, l2)
+    poke8(screen.line1, l1)
     jsr screen.init_raster
+}
+
+.macro close_screen() {
+    jsr screen.close
 }
 
 screen: {
@@ -23,16 +19,10 @@ line2:
     .byte 00
 init_raster:
     sei
-    sta VIC.RASTER
-    lda VIC.RASTER - 1
-    and #%01111111
-    sta VIC.RASTER - 1
-    lda #%10000001
-    sta VIC.IMR
-    lda #<raster_isr
-    ldy #>raster_isr
-    sta STD.IRQ_VEC
-    sty STD.IRQ_VEC + 1
+    sta VIC.RASTER                      // acc still has l1 8bit
+    clearbits(VIC.RASTER - 1, %01111111)// clear 9'th bit for line >255
+    poke8(VIC.IMR, %10000001)
+    poke16(STD.IRQ_VEC, raster_isr)
     cli
     rts
     
@@ -63,51 +53,38 @@ cb_rf:
 tmp1: .byte $00
 /* callbacks to set vic mode */
 mode: 
-    lda #%00000011
-    ora CIA2.DIRA
-    sta CIA2.DIRA
+    setbits(CIA2.DIRA, %00000011)
 
-    lda #%11111100  // select VIC bank $C000-$FFFF
-    and CIA2.base
-    sta CIA2.base
-    
-    lda VIC.MEM     // move VIC screen to base + $0000
+    clearbits(CIA2.base, %11111100) // select VIC bank $C000-$FFFF
+    lda VIC.MEM                     // move VIC screen to base + $0000
     sta tmp1
     and #%00001111
     sta VIC.MEM
-
-    lda #%00100000  // bit 5 -> HiRes
-    ora VIC.CR1
-    sta VIC.CR1
-
-    lda #%00010000
-    ora VIC.CR2
-    sta VIC.CR2
-    
-    set_color(VIC.BoC, 0)
+    setbits(VIC.CR1, %00100000)     // bit 5 -> HiRes
+    setbits(VIC.CR2, %00010000)     // bit 4 -> MC
+    poke8(VIC.BoC, 0)
     rts
 rest: 
-    set_color(VIC.BoC, 14)
-    lda #%00000011
-    ora CIA2.DIRA
-    sta CIA2.DIRA
-
-    lda #%00000011
-    ora CIA2.base
-    sta CIA2.base
-
+    poke8(VIC.BoC, 14)
+    setbits(CIA2.DIRA, %00000011)
+    setbits(CIA2.base, %00000011)
     lda tmp1        
     and #%11110000
     ora VIC.MEM
     sta VIC.MEM
+    clearbits(VIC.CR1, %11011111)
+    clearbits(VIC.CR2, %11101111)
+    rts
 
-    lda #%11011111
-    and VIC.CR1
-    sta VIC.CR1
-
-    lda #%11101111
-    and VIC.CR2
-    sta VIC.CR2
+close:
+!:
+    lda VIC.RASTER
+    cmp #$ff
+    bne !-
+    poke8(VIC.IMR, $00)
+    sei
+    poke16(STD.IRQ_VEC, STD.IRQ)
+    cli
     rts
 
 } /* scope screen */
