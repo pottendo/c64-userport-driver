@@ -36,11 +36,10 @@
 
 *=$2500
 parport: {
-    .label buffer = $fe   // pointer to destination buffer
-len:
-    .word $0000     // len of requested read
-dest:
-    .word $0400     // destination address
+                .label buffer = $fe   // pointer to destination buffer
+len:            .word $0000     // len of requested read
+dest:           .word $0400     // destination address
+read_pending:   .byte $00       // flag if read is on-going
 start_isr:
     poke8(CIA2.ICR, $7f)            // stop all interrupts
     poke16(STD.NMI_VEC, flag_isr)   // reroute NMI
@@ -48,6 +47,7 @@ start_isr:
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're ready to receive
     lda CIA2.ICR                    // clear interrupt flags by reading
     poke8(CIA2.ICR, %10010000)      // enable FLAG pin as interrupt source
+    poke8(read_pending, $01)
     rts
 
 stop_isr:
@@ -85,6 +85,7 @@ flag_isr:
     //lda parport.dest + 1
     //sta buffer + 1
     uport_stop()
+    poke8(read_pending, $00)
     jmp !+
 out:
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're ready to receive
@@ -131,6 +132,7 @@ loop:
     dec len + 1
     jmp loop
 done:
+    poke8(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
     poke8(VIC.BoC, 14)
     rts
 }
