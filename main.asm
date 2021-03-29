@@ -104,7 +104,7 @@ cmd_sndstr: .text "ECHO"        /* ECHO<addr> */
 cmd_dump:   .text "DUMP"        /* DUMP<len> */
 cmd_read:   .text "READ"        
 cmd_lit:    .fill 4, $00        // here the command is put
-cmd_args:   .fill 256, $00      // poke the args here
+cmd_args:   .fill 256, i        // poke the args here
 .print "argaddress: poke " + cmd_args + ",1"
 .print "cmdaddress: poke " + cmd + ",1"
 .print "run: sys " + main
@@ -153,7 +153,7 @@ cmd_args:   .fill 256, $00      // poke the args here
 .eval testdriver.writeln("34 print chr$(peek(x));")
 .eval testdriver.writeln("35 next x")
 .eval testdriver.writeln("39 goto 10")
-.eval testdriver.writeln(@"40 input \"enter String:\";a$")
+.eval testdriver.writeln(@"40 input \"enter string:\";a$")
 .eval testdriver.writeln("45 for i=1 to len(a$)")
 .eval testdriver.writeln("50 x=asc(mid$(a$, i, 1))")
 .eval testdriver.writeln("55 poke " + cmd_args + "+(i-1),x")

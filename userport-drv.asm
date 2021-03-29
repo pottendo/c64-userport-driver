@@ -116,11 +116,11 @@ loop:
     ldy #$00
     lda (buffer), y
     sta CIA2.PORTB
-
+    
     clearbits(CIA2.PORTA, %11111011)
     ora #%00000100                  // toggle PA2 line to signal that a char is ready
     sta CIA2.PORTA
-
+    
     inc buffer
     bne !+
     inc buffer + 1
@@ -132,6 +132,10 @@ loop:
     dec len + 1
     jmp loop
 done:
+    lda #%10000     // ensure last bits have sent
+    bit CIA2.ICR
+    beq *-3
+    
     poke8(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
     poke8(VIC.BoC, 14)
     rts
