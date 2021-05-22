@@ -1,7 +1,7 @@
 #import "userport-drv.asm"
 #import "screen.asm"
 
-.label dest_mem = $c000
+.label dest_mem = $0400
 //BasicUpstart2(main)
 *=$2000
 main:
@@ -78,6 +78,7 @@ dump:
     stx parport.len + 1
     ldx #06         // 4 byte cmd + 2 byte leng
     stx parport.len
+    adc16(parport.len, dest_mem, parport.len)
     poke16(parport.buffer, cmd_lit)
     jsr parport.start_write
 do_rcv:
@@ -85,6 +86,7 @@ do_rcv:
     stx parport.len
     ldx cmd_args + 1
     stx parport.len + 1
+    adc16(parport.len, dest_mem, parport.len)
     poke16(parport.buffer, dest_mem)   // destination address should match VIC window
     jsr parport.start_isr       // launsch interrupt driven read
     lda parport.read_pending    // busy wait until read is completed

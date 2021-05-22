@@ -48,6 +48,7 @@ start_isr:
     lda CIA2.ICR                    // clear interrupt flags by reading
     poke8(CIA2.ICR, %10010000)      // enable FLAG pin as interrupt source
     poke8(read_pending, $01)
+    deb(65)
     rts
 
 stop_isr:
@@ -89,12 +90,15 @@ flag_isr:
     jmp !+
 out:
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're ready to receive
+    deb(66)
+    inc VIC.BoC
     // done
 !:
     restore_regs()
     rti
 
 start_write:
+    poke8(VIC.BoC, 0)
     // sanity check for len == 0
     lda len + 1
     bne cont
@@ -103,16 +107,10 @@ start_write:
     rts
 cont:
     uport_stop()                    // ensure that NMIs are not handled
-    setbits(CIA2.PORTA,%00000100)   // set PA2 to high
     poke8(CIA2.DIRB, $ff)           // direction bits 1 -> output
+    setbits(CIA2.PORTA,%00000100)   // set PA2 to high
 
 loop:    
-    lda #%10000     // check if receiver is read to accept next char
-    bit CIA2.ICR
-    beq *-3
-
-    inc VIC.BoC
-
     ldy #$00
     lda (buffer), y
     sta CIA2.PORTB
@@ -120,7 +118,12 @@ loop:
     clearbits(CIA2.PORTA, %11111011)
     ora #%00000100                  // toggle PA2 line to signal that a char is ready
     sta CIA2.PORTA
-    
+ !: 
+    inc VIC.BoC
+    lda #%10000     // check if receiver is read to accept next char
+    bit CIA2.ICR
+    beq !-
+  
     inc buffer
     bne !+
     inc buffer + 1
@@ -132,9 +135,9 @@ loop:
     dec len + 1
     jmp loop
 done:
-    lda #%10000     // ensure last bits have sent
-    bit CIA2.ICR
-    beq *-3
+    //lda #%10000     // ensure last bits have sent
+    //bit CIA2.ICR
+    //beq *-3
     
     poke8(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
     poke8(VIC.BoC, 14)
