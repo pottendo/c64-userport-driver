@@ -71,14 +71,19 @@ send_string:
     stx parport.len
     poke16(parport.buffer, cmd_lit)
     jsr parport.start_write
+    ldx #32
+    stx cmd_args
+    ldx #0
+    stx cmd_args + 1
+    jmp do_rcv
     rts
 dump:
     jsr prep_cmd
     ldx #0
     stx parport.len + 1
-    ldx #06         // 4 byte cmd + 2 byte leng
+    ldx #06         // 4 byte cmd + 2 byte length
     stx parport.len
-    adc16(parport.len, dest_mem, parport.len)
+    //adc16(parport.len, dest_mem, parport.len)
     poke16(parport.buffer, cmd_lit)
     jsr parport.start_write
 do_rcv:
@@ -87,13 +92,13 @@ do_rcv:
     ldx cmd_args + 1
     stx parport.len + 1
     adc16(parport.len, dest_mem, parport.len)
-    poke16(parport.buffer, dest_mem)   // destination address should match VIC window
-    jsr parport.start_isr       // launsch interrupt driven read
-    lda parport.read_pending    // busy wait until read is completed
+    poke16(parport.buffer, dest_mem)    // destination address should match VIC window
+    jsr parport.start_isr               // launch interrupt driven read
+    lda parport.read_pending            // busy wait until read is completed
     bne *-3
     rts
 read:
-    jsr do_rcv
+    jmp dump
     rts
     
 // numeric int args: max 16bit in little endian format
