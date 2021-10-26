@@ -12,6 +12,8 @@
     jsr screen.close
 }
 
+.segmentdef screen
+
 screen: {
 line1:
     .byte 00

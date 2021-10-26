@@ -34,9 +34,10 @@
     jsr parport.start_write
 }
 
-*=$2500
+.segmentdef par_drv //[start=$2500] 
+
 parport: {
-                .label buffer = $fe   // pointer to destination buffer
+                .label buffer = p.zpp   // pointer to destination buffer
 len:            .word $0000     // len of requested read
 dest:           .word $0400     // destination address
 read_pending:   .byte $00       // flag if read is on-going
@@ -44,7 +45,9 @@ start_isr:
     poke8(CIA2.ICR, $7f)            // stop all interrupts
     poke16(STD.NMI_VEC, flag_isr)   // reroute NMI
     poke8(CIA2.DIRB, $00)           // direction bit 0 -> input
-    setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're ready to receive
+    setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
+    //setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're sending
+    clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
     lda CIA2.ICR                    // clear interrupt flags by reading
     poke8(CIA2.ICR, %10010000)      // enable FLAG pin as interrupt source
     poke8(read_pending, $01)
@@ -66,20 +69,17 @@ flag_isr:
     jmp STD.NMI
     // receive char now
 !:
-    clearbits(CIA2.PORTA, %11111011)   // set PA2 to low to signal we're busy receiving
+    setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy receiving
     ldy #$00
-    lda CIA2.PORTB  // read chr from the parallel input
+    lda CIA2.PORTB  // read chr from the parallel port B
     sta (buffer), y
+    inc VIC.BoC
     inc buffer      
     bne !+
     inc buffer + 1
 !:
-    lda buffer + 1
-    cmp len + 1
-    bne out
-    lda buffer
-    cmp len
-    bne out
+    cmp16(buffer, len) 
+    bcc out
     // reset rcv buffer
     //lda parport.dest
     //sta buffer
@@ -89,11 +89,10 @@ flag_isr:
     poke8(read_pending, $00)
     jmp !+
 out:
-    setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're ready to receive
     deb(66)
-    inc VIC.BoC
     // done
 !:
+    clearbits(CIA2.PORTA, %11111011)   // set PA2 to low to signal we're ready to receive
     restore_regs()
     rti
 
@@ -108,22 +107,22 @@ start_write:
 cont:
     uport_stop()                    // ensure that NMIs are not handled
     poke8(CIA2.DIRB, $ff)           // direction bits 1 -> output
-    setbits(CIA2.PORTA,%00000100)   // set PA2 to high
+    setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
+    setbits(CIA2.PORTA, %00000100)  // set PA2 to high
 
 loop:    
     ldy #$00
     lda (buffer), y
     sta CIA2.PORTB
     
-    clearbits(CIA2.PORTA, %11111011)
-    ora #%00000100                  // toggle PA2 line to signal that a char is ready
-    sta CIA2.PORTA
+//    clearbits(CIA2.PORTA, %11111011)
+//    ora #%00000100                  // toggle PA2 line to signal that a char is ready
+//    sta CIA2.PORTA
  !: 
     inc VIC.BoC
     lda #%10000     // check if receiver is read to accept next char
     bit CIA2.ICR
     beq !-
-  
     inc buffer
     bne !+
     inc buffer + 1
@@ -143,3 +142,5 @@ done:
     poke8(VIC.BoC, 14)
     rts
 }
+
+__END__:    nop

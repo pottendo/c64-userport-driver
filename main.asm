@@ -1,9 +1,14 @@
+//BasicUpstart2(main)
+//.segment main [outPrg="main.prg", start=$2000]
+
+*=$2000
+    jmp main
+
 #import "userport-drv.asm"
 #import "screen.asm"
 
 .label dest_mem = $0400
-//BasicUpstart2(main)
-*=$2000
+
 main:
     jsr process_cmd
     rts
@@ -50,7 +55,7 @@ prep_cmd:
     bne !-
     tax
     ldy #0
- !:
+!:
     lda cmd_start,x
     sta cmd_lit,y
     inx
@@ -71,11 +76,18 @@ send_string:
     stx parport.len
     poke16(parport.buffer, cmd_lit)
     jsr parport.start_write
-    ldx #32
+    dex             // 4 chars command + '0'
+    dex
+    dex
+    dex
+    dex
+    lda #$0
+    sta dest_mem,x      // terminate string
     stx cmd_args
     ldx #0
     stx cmd_args + 1
-    jmp do_rcv
+    jsr do_rcv
+    print(dest_mem)
     rts
 dump:
     jsr prep_cmd
@@ -87,11 +99,7 @@ dump:
     poke16(parport.buffer, cmd_lit)
     jsr parport.start_write
 do_rcv:
-    ldx cmd_args
-    stx parport.len
-    ldx cmd_args + 1
-    stx parport.len + 1
-    adc16(parport.len, dest_mem, parport.len)
+    adc16(cmd_args, dest_mem, parport.len)
     poke16(parport.buffer, dest_mem)    // destination address should match VIC window
     jsr parport.start_isr               // launch interrupt driven read
     lda parport.read_pending            // busy wait until read is completed
@@ -112,8 +120,13 @@ cmd_dump:   .text "DUMP"        /* DUMP<len> */
 cmd_read:   .text "READ"        
 cmd_lit:    .fill 4, $00        // here the command is put
 cmd_args:   .fill 256, i        // poke the args here
+
+__ENDMAIN__: nop
+
+
 .print "argaddress: poke " + cmd_args + ",1"
 .print "cmdaddress: poke " + cmd + ",1"
+.print "parport lenaddr: " + parport.len
 .print "run: sys " + main
 .print "paste from here =================="
 .print "new"
