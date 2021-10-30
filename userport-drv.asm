@@ -37,10 +37,12 @@
 .segmentdef par_drv //[start=$2500] 
 
 parport: {
-                .label buffer = p.zpp   // pointer to destination buffer
+                .label buffer = $9e   // pointer to destination buffer
 len:            .word $0000     // len of requested read
 dest:           .word $0400     // destination address
 read_pending:   .byte $00       // flag if read is on-going
+
+// Interrupt driven read, finished when read_pending == 1
 start_isr:
     poke8(CIA2.ICR, $7f)            // stop all interrupts
     poke16(STD.NMI_VEC, flag_isr)   // reroute NMI
@@ -73,7 +75,6 @@ flag_isr:
     ldy #$00
     lda CIA2.PORTB  // read chr from the parallel port B
     sta (buffer), y
-    inc VIC.BoC
     inc buffer      
     bne !+
     inc buffer + 1
@@ -87,17 +88,42 @@ flag_isr:
     //sta buffer + 1
     uport_stop()
     poke8(read_pending, $00)
-    jmp !+
+//    jmp !+
 out:
-    deb(66)
-    // done
 !:
     clearbits(CIA2.PORTA, %11111011)   // set PA2 to low to signal we're ready to receive
     restore_regs()
     rti
 
+sync_read:
+    poke8(read_pending, 0)
+    poke8(CIA2.DIRB, $00)           // direction bit 0 -> input
+    setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
+    ldy #$00
+next:
+    clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
+    lda #%10000
+!:  bit CIA2.ICR
+    nop
+    nop
+    nop
+    nop
+    beq !-
+    setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy
+    inc VIC.BoC
+    inc $0400
+    lda CIA2.PORTB
+    sta (buffer), y
+    inc buffer      
+    bne !+
+    inc buffer + 1
+!:
+    cmp16(buffer, len) 
+    bcc next
+    poke8(read_pending, 0);
+    rts
+
 start_write:
-    poke8(VIC.BoC, 0)
     // sanity check for len == 0
     lda len + 1
     bne cont
@@ -118,9 +144,8 @@ loop:
 //    clearbits(CIA2.PORTA, %11111011)
 //    ora #%00000100                  // toggle PA2 line to signal that a char is ready
 //    sta CIA2.PORTA
- !: 
-    inc VIC.BoC
-    lda #%10000     // check if receiver is read to accept next char
+  
+!:  lda #%10000     // check if receiver is ready to accept next char
     bit CIA2.ICR
     beq !-
     inc buffer
@@ -139,7 +164,6 @@ done:
     //beq *-3
     
     poke8(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
-    poke8(VIC.BoC, 14)
     rts
 }
 
