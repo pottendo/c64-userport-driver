@@ -57,13 +57,15 @@ tmp1: .byte $00
 mode: 
     setbits(CIA2.DIRA, %00000011)
 
-    clearbits(CIA2.base, %11111100) // select VIC bank $C000-$FFFF
+    clearbits(CIA2.base, %11111100) // select VIC bank $8000-$BFFF
+    setbits(CIA2.base, %00000010)
     lda VIC.MEM                     // move VIC screen to base + $0000
     sta tmp1
     and #%00001111
+    ora #%11110000  // screen to base + $3C00
     sta VIC.MEM
     setbits(VIC.CR1, %00100000)     // bit 5 -> HiRes
-    setbits(VIC.CR2, %00010000)     // bit 4 -> MC
+    //setbits(VIC.CR2, %00010000)     // bit 4 -> MC
     poke8(VIC.BoC, 0)
     rts
 rest: 

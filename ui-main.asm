@@ -2,8 +2,8 @@ BasicUpstart2(main)
 #import "cmds.asm"
 
 main:
-    lda #$00
-    memset(dest_mem, $200)
+    memset(dest_mem, 0, $2000)
+    memset(dest_mem + $3c00, $10, $400)
     show_screen(1, str.screen1)
     jsr loopmenu
 exit:
@@ -60,6 +60,7 @@ cmd3:
     rts
 cmd4:
     show_screen(1, str.screen1)
+    memset(dest_mem, 0, 8000)
     rts
 cmd5:
     print(str.inputnumber)
@@ -69,6 +70,10 @@ cmd5:
 !:  jsr dump
     dec loopc
     bne !-
+    rts
+cmd6:
+    poke16(cmd_args, 8000)
+    jsr mandel
     rts
 cmd9:
     print(str.finished)
@@ -85,6 +90,7 @@ cmd_vec:
     cmdp('3', cmd3)
     cmdp('4', cmd4)
     cmdp('5', cmd5)
+    cmdp('6', cmd6)
     cmdp('9', cmd9)
     cmdp($ff, lastcmd)
 
@@ -126,6 +132,8 @@ screen1:
 .text "4) CLEAR SCREEN"
 .byte $0d
 .text "5) LOOP RECEIVE"
+.byte $0d
+.text "6) MANDELBROT"
 .byte $0d
 .text "9) EXIT"
 .byte $0d

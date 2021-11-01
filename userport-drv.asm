@@ -100,26 +100,33 @@ sync_read:
     poke8(CIA2.DIRB, $00)           // direction bit 0 -> input
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
     ldy #$00
+    poke16(32768,0)
 next:
     clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
-    lda #%10000
-!:  bit CIA2.ICR
+//    lda #%10000
+//!:  bit CIA2.ICR
+//    beq !-
+!:  
+    lda CIA2.ICR
     nop
     nop
     nop
     nop
+    and #%00010000
     beq !-
+
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy
-    inc VIC.BoC
-    inc $0400
     lda CIA2.PORTB
     sta (buffer), y
+    inc VIC.BoC
+    inc16(32768)
     inc buffer      
     bne !+
     inc buffer + 1
 !:
     cmp16(buffer, len) 
     bcc next
+    clearbits(CIA2.PORTA, %11111011)
     poke8(read_pending, 0);
     rts
 
@@ -145,8 +152,8 @@ loop:
 //    ora #%00000100                  // toggle PA2 line to signal that a char is ready
 //    sta CIA2.PORTA
   
-!:  lda #%10000     // check if receiver is ready to accept next char
-    bit CIA2.ICR
+    lda #%10000     // check if receiver is ready to accept next char
+!:  bit CIA2.ICR
     beq !-
     inc buffer
     bne !+

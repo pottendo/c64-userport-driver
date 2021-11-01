@@ -4,7 +4,7 @@
 #import "userport-drv.asm"
 #import "screen.asm"
 
-.label dest_mem = $c000
+.label dest_mem = $4000
 
 // init / close screen
 toggle_screen:
@@ -81,6 +81,14 @@ do_rcv:
 read:
     jmp dump
     rts
+mandel:
+    lda #$04
+    jsr prep_cmd
+    poke16(parport.len, 4);
+    poke16(parport.buffer, cmd_lit)
+    jsr parport.start_write
+    jsr do_rcv
+    rts
     
 // numeric int args: max 16bit in little endian format
 // string args: '0' as terminator
@@ -91,6 +99,7 @@ cmd_init:   .text "INIT"        /* INIT<1|0> vic on or off */
 cmd_sndstr: .text "ECHO"        /* ECHO<addr> */
 cmd_dump:   .text "DUMP"        /* DUMP<len> */
 cmd_read:   .text "READ"        
+cmd_mandel: .text "MAND"        
 cmd_lit:    .fill 4, $00        // here the command is put
 cmd_args:   .fill 256, i        // poke the args here
 cmd_inv:    .text "INVALID COMMAND."
