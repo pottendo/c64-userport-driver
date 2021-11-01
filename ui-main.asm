@@ -3,7 +3,9 @@ BasicUpstart2(main)
 
 main:
     memset(dest_mem, 0, $2000)
-    memset(dest_mem + $3c00, $10, $400)
+    memset(dest_mem + $3c00, $bc, $400)
+    //memset($d800, $98, $200)
+    poke8(VIC.BgC, 0)
     show_screen(1, str.screen1)
     jsr loopmenu
 exit:

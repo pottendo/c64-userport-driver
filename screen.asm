@@ -65,7 +65,7 @@ mode:
     ora #%11110000  // screen to base + $3C00
     sta VIC.MEM
     setbits(VIC.CR1, %00100000)     // bit 5 -> HiRes
-    //setbits(VIC.CR2, %00010000)     // bit 4 -> MC
+    setbits(VIC.CR2, %00010000)     // bit 4 -> MC
     poke8(VIC.BoC, 0)
     rts
 rest: 
