@@ -63,10 +63,7 @@ echo:
 dump:
     lda #$02
     jsr prep_cmd
-    ldx #0
-    stx parport.len + 1
-    ldx #06         // 4 byte cmd + 2 byte length
-    stx parport.len
+    poke16(parport.len, 6)
     //adc16(parport.len, dest_mem, parport.len)
     poke16(parport.buffer, cmd_lit)
     jsr parport.start_write
@@ -79,6 +76,7 @@ do_rcv:
     bne *-3
     rts
 read:
+    lda #$03
     jmp dump
     rts
 mandel:
