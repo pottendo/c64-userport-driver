@@ -1,18 +1,23 @@
-//BasicUpstart2(main)
-//.segment main [outPrg="main.prg", start=$2000]
-
+#import "globals.asm"
 #import "userport-drv.asm"
 #import "screen.asm"
 
-.label dest_mem = $4000
+// .segment _cmds
 
 // init / close screen
 toggle_screen:
     lda cmd_args
     beq !+
-    init_screen(49, 153, screen.mode, screen.rest)
+    sprite(0, "on")
+    sprite(7, "on")
+    init_screen(49, 153, main_.get_jst, main_.get_jst)
+    jsr screen.mode
     rts
-!:  close_screen()
+!:  
+    //close_screen()
+    sprite(0, "off")
+    sprite(7, "off")
+    jsr screen.rest
     rts
 
 prep_cmd:
@@ -45,7 +50,7 @@ echo:
     jmp !l-
 !:  inx             // send also the '0' char
     stx parport.len
-    poke16(parport.buffer, cmd_lit)
+    poke16_(parport.buffer, cmd_lit)
     jsr parport.start_write
     dex             // 4 chars command + '0'
     dex
@@ -53,23 +58,23 @@ echo:
     dex
     dex
     lda #$0
-    sta dest_mem,x      // terminate string
+    sta gl.dest_mem,x      // terminate string
     stx cmd_args
     ldx #0
     stx cmd_args + 1
     jsr do_rcv
-    print(dest_mem)
+    print(gl.dest_mem)
     rts
 dump:
     lda #$02
     jsr prep_cmd
-    poke16(parport.len, 6)
-    //adc16(parport.len, dest_mem, parport.len)
-    poke16(parport.buffer, cmd_lit)
+    poke16_(parport.len, 6)
+    //adc16(parport.len, gl.dest_mem, parport.len)
+    poke16_(parport.buffer, cmd_lit)
     jsr parport.start_write
 do_rcv:
-    adc16(cmd_args, dest_mem, parport.len)
-    poke16(parport.buffer, dest_mem)    // destination address should match VIC window
+    adc16(cmd_args, gl.dest_mem, parport.len)
+    poke16_(parport.buffer, gl.dest_mem)    // destination address should match VIC window
     jsr parport.start_isr               // launch interrupt driven read
     //jsr parport.sync_read
     lda parport.read_pending            // busy wait until read is completed
@@ -82,9 +87,8 @@ read:
 mandel:
     lda #$04
     jsr prep_cmd
-    poke16(parport.len, 4);
-    poke16(parport.buffer, cmd_lit)
-    jsr parport.start_write
+    uport_write(cmd_lit, 10)    // 4 byte cmd, 2x3byte for coordinates
+    poke16_(cmd_args, 8000)
     jsr do_rcv
     rts
     

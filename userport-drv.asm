@@ -29,12 +29,12 @@
 }
 
 .macro uport_write(from, len) {
-    poke16(parport.buffer, from)
-    poke16(parport.len, len)
+    poke16_(parport.buffer, from)
+    poke16_(parport.len, len)
     jsr parport.start_write
 }
 
-.segmentdef par_drv //[start=$2500] 
+// .segment _par_drv
 
 parport: {
                 .label buffer = $9e   // pointer to destination buffer
@@ -44,23 +44,23 @@ read_pending:   .byte $00       // flag if read is on-going
 
 // Interrupt driven read, finished when read_pending == 1
 start_isr:
-    poke8(CIA2.ICR, $7f)            // stop all interrupts
-    poke16(STD.NMI_VEC, flag_isr)   // reroute NMI
-    poke8(CIA2.DIRB, $00)           // direction bit 0 -> input
+    poke8_(CIA2.ICR, $7f)            // stop all interrupts
+    poke16_(STD.NMI_VEC, flag_isr)   // reroute NMI
+    poke8_(CIA2.DIRB, $00)           // direction bit 0 -> input
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
     //setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're sending
     clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
     lda CIA2.ICR                    // clear interrupt flags by reading
-    poke8(CIA2.ICR, %10010000)      // enable FLAG pin as interrupt source
-    poke8(read_pending, $01)
+    poke8_(CIA2.ICR, %10010000)      // enable FLAG pin as interrupt source
+    poke8_(read_pending, $01)
     deb(65)
     rts
 
 stop_isr:
-    poke8(CIA2.ICR, $7f)            // stop all interrupts
-    poke16(STD.NMI_VEC, STD.NMI)    // reroute NMI
-    poke8(CIA2.DIRB, $00)           // direction bits 0 -> input
-    poke8(CIA2.ICR, $80)            // enable interrupts    
+    poke8_(CIA2.ICR, $7f)            // stop all interrupts
+    poke16_(STD.NMI_VEC, STD.NMI)    // reroute NMI
+    poke8_(CIA2.DIRB, $00)           // direction bits 0 -> input
+    poke8_(CIA2.ICR, $80)            // enable interrupts    
     rts
     
 flag_isr:
@@ -87,7 +87,7 @@ flag_isr:
     //lda parport.dest + 1
     //sta buffer + 1
     uport_stop()
-    poke8(read_pending, $00)
+    poke8_(read_pending, $00)
 //    jmp !+
 out:
 !:
@@ -96,11 +96,11 @@ out:
     rti
 
 sync_read:
-    poke8(read_pending, 0)
-    poke8(CIA2.DIRB, $00)           // direction bit 0 -> input
+    poke8_(read_pending, 0)
+    poke8_(CIA2.DIRB, $00)           // direction bit 0 -> input
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
     ldy #$00
-    poke16(32768,0)
+    poke16_(32768,0)
 next:
     clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
 //    lda #%10000
@@ -127,7 +127,7 @@ next:
     cmp16(buffer, len) 
     bcc next
     clearbits(CIA2.PORTA, %11111011)
-    poke8(read_pending, 0);
+    poke8_(read_pending, 0);
     rts
 
 start_write:
@@ -139,7 +139,7 @@ start_write:
     rts
 cont:
     uport_stop()                    // ensure that NMIs are not handled
-    poke8(CIA2.DIRB, $ff)           // direction bits 1 -> output
+    poke8_(CIA2.DIRB, $ff)           // direction bits 1 -> output
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high
 
@@ -170,7 +170,7 @@ done:
     //bit CIA2.ICR
     //beq *-3
     
-    poke8(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
+    poke8_(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
     rts
 }
 

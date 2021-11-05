@@ -1,10 +1,10 @@
 #import "pottendos_utils.asm"
 
 .macro init_screen(l1, l2, mode_fun, rest_fun) {
-    poke16(screen.cb_mf + 1, mode_fun)  // modify operand
-    poke16(screen.cb_rf + 1, rest_fun)  // modify operand
-    poke8(screen.line2, l2)
-    poke8(screen.line1, l1)
+    poke16_(screen.cb_mf + 1, mode_fun)  // modify operand
+    poke16_(screen.cb_rf + 1, rest_fun)  // modify operand
+    poke8_(screen.line2, l2)
+    poke8_(screen.line1, l1)
     jsr screen.init_raster
 }
 
@@ -12,7 +12,7 @@
     jsr screen.close
 }
 
-.segmentdef screen
+// .segment _screen
 
 screen: {
 line1:
@@ -23,8 +23,8 @@ init_raster:
     sei
     sta VIC.RASTER                      // acc still has l1 8bit
     clearbits(VIC.RASTER - 1, %01111111)// clear 9'th bit for line >255
-    poke8(VIC.IMR, %10000001)
-    poke16(STD.IRQ_VEC, raster_isr)
+    poke8_(VIC.IMR, %10000001)
+    poke16_(STD.IRQ_VEC, raster_isr)
     cli
     rts
     
@@ -56,8 +56,7 @@ tmp1: .byte $00
 /* callbacks to set vic mode */
 mode: 
     setbits(CIA2.DIRA, %00000011)
-
-    clearbits(CIA2.base, %11111100) // select VIC bank $8000-$BFFF
+    clearbits(CIA2.base, %11111100) // select VIC bank $4000-$7FFF
     setbits(CIA2.base, %00000010)
     lda VIC.MEM                     // move VIC screen to base + $0000
     sta tmp1
@@ -66,15 +65,15 @@ mode:
     sta VIC.MEM
     setbits(VIC.CR1, %00100000)     // bit 5 -> HiRes
     setbits(VIC.CR2, %00010000)     // bit 4 -> MC
-    poke8(VIC.BoC, 0)
+    poke8_(VIC.BoC, 0)
     rts
 rest: 
-    poke8(VIC.BoC, 14)
-    setbits(CIA2.DIRA, %00000011)
+    poke8_(VIC.BoC, 14)
+    clearbits(CIA2.DIRA, %11111100)
     setbits(CIA2.base, %00000011)
     lda tmp1        
-    and #%11110000
-    ora VIC.MEM
+    //and #%11110000
+    //ora VIC.MEM
     sta VIC.MEM
     clearbits(VIC.CR1, %11011111)
     clearbits(VIC.CR2, %11101111)
@@ -85,9 +84,9 @@ close:
     lda VIC.RASTER
     cmp #$ff
     bne !-
-    poke8(VIC.IMR, $00)
+    poke8_(VIC.IMR, $00)
     sei
-    poke16(STD.IRQ_VEC, STD.IRQ)
+    poke16_(STD.IRQ_VEC, STD.IRQ)
     cli
     rts
 

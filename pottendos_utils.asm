@@ -1,7 +1,8 @@
 #importonce
+#import "globals.asm"
 
 .namespace CIA1 {
-    .label base = $dd00 
+    .label base = $dc00 
     .label PORTA = base
     .label PORTB = base + 1
     .label DIRA = base + 2
@@ -48,10 +49,11 @@
     .label RASTER = base + $12
     .label BoC = base + $20
     .label BgC = base + $21
+    .label SprEnable = base + $15
 }
 
 // utility functions
-//.segmentdef pottendo_utils // [start=$3000] 
+// .segment _pottendo_utils 
 
 .namespace P {
     .label zpp1 = $fe    // zero-page general purpose pointers
@@ -97,7 +99,7 @@ _rdst:
     rts
 
 _readnum:
-    poke16(P.zpp1, 0)
+    poke16_(P.zpp1, 0)
     sta digitseen   // acc is 0 here
 l1:
     jsr STD.BASIN
@@ -153,8 +155,11 @@ ex:
     ldy P.zpp1 + 1
     rts
 
-digitseen: .byte $00
-dezcount:  .byte $00
+digitseen:  .byte $00
+dezcount:   .byte $00
+binaries:   .byte $01, $02, $04, $08, $10, $20, $40, $80
+joy_ack:    .byte $01
+tmp:        .word $0000
 }
 
 // macros
@@ -174,16 +179,30 @@ dezcount:  .byte $00
     pla
 }
 
-.macro poke8(addr, val) {
+.macro poke8_(addr, val) {
     lda #val
     sta addr
 }
-.macro poke16(addr, val) {
+
+.macro poke8(addr1, addr2) {
+    lda addr2
+    sta addr1
+}
+
+.macro poke16_(addr, val) {
     lda #<val
     sta addr
     lda #>val
     sta addr + 1
 }
+
+.macro poke16(addr1, addr2) {
+    lda addr2
+    sta addr1
+    lda addr2 + 1
+    sta addr1 + 1
+}
+
 // input best as binary val: e.g. %00010001
 .macro setbits(addr, val) {
     lda addr
@@ -218,7 +237,8 @@ dezcount:  .byte $00
     pla
 }
 
-.macro adc16(a, b, res)
+// addr, scalar, addr of res-meme
+.macro adc16(a, b, res) 
 {   
     clc
     lda a
@@ -227,6 +247,35 @@ dezcount:  .byte $00
     lda a + 1
     adc #>b 
     sta res + 1
+}
+
+.macro adc8(a, b, res)
+{
+    clc
+    lda a
+    adc #<b
+    sta res
+}
+
+// addr, scalar, addr of res-meme
+.macro sbc16(a, b, res) 
+{
+    sec
+    lda a
+    sbc #<b
+    sta res
+    lda a + 1
+    sbc #>b 
+    sta res + 1
+}
+
+// addr, scalar, addr of res-meme
+.macro sbc8(a, b, res) 
+{
+    sec
+    lda a
+    sbc #<b
+    sta res
 }
 
 // dump acc as bits via BSOUT
@@ -260,7 +309,7 @@ zero:
 // print '0' terminated string via BSOUT
 .macro print(loc)
 {
-    poke16(P.zpp1, loc)
+    poke16_(P.zpp1, loc)
     jsr P._print
 }
 
@@ -276,11 +325,35 @@ zero:
 !:
 }
 
+// compare 8 bit in mem with scalar
+.macro cmp8_(a, b)
+{
+    lda a
+    cmp #b 
+}
+
+// compare 8 bit vars in mem
+.macro cmp8(a, b)
+{
+    lda a
+    cmp b 
+}
+
 .macro inc16(a)
 {
     inc a
     bne !+
     inc a + 1
+!:
+}
+
+.macro dec16(a)
+{
+    dec a
+    lda a
+    cmp #$ff
+    bne !+
+    dec a + 1
 !:
 }
 
@@ -337,7 +410,7 @@ rep:
 // fill memory with val from acc
 .macro memset(addr, val, no)
 {
-    poke16(P.zpp1, addr)
+    poke16_(P.zpp1, addr)
     adc16(P.zpp1, no, P.zpp2)
     ldy #$00
 !l1:
@@ -348,4 +421,139 @@ rep:
     inc16(P.zpp1)
     jmp !l1-
 !: 
+}
+
+.macro memcpy(dst, src, n)
+{
+    poke16_(P.zpp1, dst)
+    poke16_(P.zpp2, src)
+    adc16(P.zpp1, n, P.tmp)
+    ldy #$00
+ l1:
+    cmp16(P.zpp1, P.tmp)
+    beq !+
+    lda (P.zpp2), y
+    sta (P.zpp1), y
+    inc16(P.zpp2)
+    inc16(P.zpp1)
+    jmp l1
+!:
+}
+
+// Spr# 0-7, "on"/"off"
+.macro sprite(sprno, a)
+{
+    .if (a == "on")
+    {
+        ldx #sprno
+        lda P.binaries, x
+        ora VIC.SprEnable
+        sta VIC.SprEnable
+    }
+    else
+    {
+        ldx #sprno
+        lda P.binaries, x
+        eor #$ff
+        and VIC.SprEnable
+        sta VIC.SprEnable
+    }
+}
+
+.macro sprite_pos(sprno, x, y)
+{
+    lda x
+    sta VIC.base + sprno * 2    // spr# 1-8
+    lda y
+    sta VIC.base + sprno * 2 + 1
+    ldx #sprno
+    lda P.binaries, x
+    ldx x + 1
+    beq clhb
+    ora VIC.base + $10
+    sta VIC.base + $10 
+    jmp !+
+clhb:
+    eor #$ff
+    and VIC.base + $10
+    sta VIC.base + $10
+!:
+}
+
+// immediate addressing
+.macro sprite_pos_(sprno, x, y)
+{
+    lda #<x
+    sta VIC.base + sprno * 2    // spr# 1-8
+    lda #<y
+    sta VIC.base + sprno * 2 + 1
+    ldx #sprno
+    lda P.binaries, x
+    .if ((x & $ff00) > 0)
+    {
+        ora VIC.base + $10
+        sta VIC.base + $10
+    }
+    else {
+        eor #$ff
+        and VIC.base + $10
+        sta VIC.base + $10
+    }
+}
+
+.macro sprite_sel_(sprno, sprptr)
+{
+    lda #(($2000 + sprptr * 64) / 64)
+    sta gl.vic_videoram + $3f8 + sprno
+}
+
+// select sprite from acc
+.macro sprite_sel_acc(sprno)
+{
+    sta gl.vic_videoram + $3f8 + sprno
+}
+
+.macro on_joy(a, fn)
+{
+    .if (a == "right"){
+        lda CIA1.PORTA
+        and #$08
+        bne !+
+        jsr fn 
+    !: 
+    }
+    .if (a == "left"){
+        lda CIA1.PORTA
+        and #$04
+        bne !+
+        jsr fn 
+    !: 
+    }
+    .if (a == "down"){
+        lda CIA1.PORTA
+        and #$02
+        bne !+
+        jsr fn 
+    !: 
+    }
+    .if (a == "up"){
+        lda CIA1.PORTA
+        and #$01
+        bne !+
+        jsr fn 
+    !: 
+    }
+    .if (a == "fire"){
+        lda #$10
+        bit CIA1.PORTA
+        bne not_pressed
+        lda P.joy_ack
+        beq out
+        jsr fn
+        dec P.joy_ack
+        jmp out
+    not_pressed:
+        poke8_(P.joy_ack, 1)
+    out:
+    }
 }

@@ -1,17 +1,27 @@
-BasicUpstart2(main)
+//.file [name="ui.prg", segments="_main, _cmds, _screen, _par_drv, _pottendo_utils, _data, _sprites"]
+.filenamespace main_
+
+BasicUpstart2(main_entry)
+
+#import "globals.asm"
+#import "pottendos_utils.asm"
 #import "cmds.asm"
 
-main:
-    memset(dest_mem, 0, $2000)
-    memset(dest_mem + $3c00, $bc, $400)
+// .segment _main
+main_entry:
+    memset(gl.dest_mem, 0, $2000)
+    memset(gl.dest_mem + $3c00, $bc, $400)
+    memcpy(gl.vic_base + $2000, sprites.start, sprites.end - sprites.start)
     //memset($d800, $98, $200)
-    poke8(VIC.BgC, 0)
+    poke8_(VIC.BgC, 0)
     show_screen(1, str.screen1)
+    jsr prep_sprites
     jsr loopmenu
 exit:
     rts
 
 loopmenu:
+    //jsr get_jst
     jsr STD.GETIN
     beq loopmenu
     ldx #0
@@ -62,19 +72,27 @@ cmd3:
     rts
 cmd4:
     show_screen(1, str.screen1)
-    memset(dest_mem, 0, 8000)
+    memset(gl.dest_mem, 0, 8000)
     rts
 cmd5:
     print(str.inputnumber)
     rnum(cmd_args)
     sta loopc
-    poke16(cmd_args, (1024 * 4) - 1)
+    poke16_(cmd_args, (1024 * 4) - 1)
 !:  jsr dump
     dec loopc
     bne !-
     rts
 cmd6:
-    poke16(cmd_args, 8000)
+    sbc16(lu, $18, tmp)
+    poke16(cmd_args, tmp)
+    sbc8(lu + 6, $32, tmp)    
+    poke8(cmd_args + 2, tmp)
+
+    sbc16(rl, 24 - $18, tmp)  // -border($18) + spr-width(24px)
+    poke16(cmd_args + 3, tmp)
+    sbc8(rl + 6, 11, tmp)            // -border($32) + spr-height(21px)
+    poke8(cmd_args + 5, tmp)
     jsr mandel
     rts
 cmd9:
@@ -85,6 +103,73 @@ cmd9:
 lastcmd:
     rts
 
+prep_sprites:
+    sprite(0, "on")
+    sprite(7, "on")
+
+    sprite_sel_(0, 0)
+    sprite_sel_(7, 1)
+    rts
+
+decx:
+    lda selstate
+    cmp #$02
+    bne !+
+    sprite_move("left", lu)
+    rts
+!:  
+    sprite_move("left", rl)
+    rts
+incx:
+    lda selstate
+    cmp #$02
+    bne !+
+    sprite_move("right", lu)
+    rts
+!:
+    sprite_move("right", rl)
+    rts  
+decy:
+    lda selstate
+    cmp #$02
+    bne !+
+    sprite_move("up", lu)
+    rts
+!:
+    sprite_move("up", rl)
+    rts
+incy:
+    lda selstate
+    cmp #$02
+    bne !+
+    sprite_move("down", lu)
+    rts
+!:
+    sprite_move("down", rl)
+
+    rts
+    
+fire:
+    dec selstate
+    beq shipit 
+    rts 
+shipit:
+    inc VIC.BoC
+    lda #$02
+    sta selstate
+    jsr cmd6
+    rts
+
+get_jst:
+    on_joy("left", decx)
+    on_joy("right", incx)
+    on_joy("up", decy)
+    on_joy("down", incy)
+    on_joy("fire", fire)
+    sprite_pos(0, lu, lu + 6)
+    sprite_pos(7, rl, rl + 6)
+    rts
+    
 cmd_vec:
     cmdp('0', cmd0)
     cmdp('1', cmd1)
@@ -102,14 +187,62 @@ cmd_vec:
     .word addr
 }
 
-cmd0_: .text "COMMAND 0"
-.byte $0d, $00
-cmd3_: .text "COMMAND 3"
-.byte $0d, $00
-scrstate: .byte $00
-scrfill: .byte $00
-loopc: .byte $00
+// .segment _data
 
+cmd3_:  .text "COMMAND 3"
+        .byte $0d, $00
+scrstate:   .byte $00
+scrfill:    .byte $00
+loopc:      .byte $00
+selstate:   .byte $02
+tmp:        .word $0000
+// left upper
+lu:         .word $0018     // x-coord
+            .word $0018     // x-coord lower boundary
+            .word $0140     // x-coord upper boundary
+            .byte $32       // y-coord
+            .byte $32       // y-coord lower boundary
+            .byte $e5       // y-coord upport boundry
+// right lower
+rl:         .word $0141
+            .word $0018
+            .word $0141
+            .byte $e6
+            .byte $32
+            .byte $e6
+
+.macro sprite_move(action, addr)
+{
+    .if (action == "left")
+    {
+        cmp16(addr, addr + 2)
+        beq !+
+        dec16(addr)
+    !:
+    }
+    .if (action == "right")
+    {
+        cmp16(addr, addr + 4)
+        beq !+
+        inc16(addr)
+    !:
+    }
+    .if (action == "up")
+    {
+        cmp8(addr + 6, addr + 7)
+        beq !+
+        dec addr + 6
+    !:
+    }
+    .if (action == "down")
+    {
+        cmp8(addr + 6, addr + 8)
+        beq !+
+        inc addr + 6
+    !:
+    }
+}
+    
 .namespace str {
 inputtext:
     .text "TEXT:"
@@ -144,39 +277,21 @@ screen1:
 .byte $00
 }
 
-.print "argaddress: poke " + cmd_args + ",1"
-.print "cmdaddress: poke " + cmd + ",1"
-.print "parport lenaddr: " + parport.len
-.print "run: sys " + main
-.print "paste from here =================="
-.print "new"
-.print @"10 input \"command\"; a$"
-.print @"12 c=asc(mid$(a$,1,1))-asc(\"0\")"
-.print @"13 if c < 0 or c>3 then print \"invalid command\":print:goto10"
-.print "15 poke " + cmd + ",c"
-.print "24 r = 1"
-.print "25 if c = 0 or c = 1 then gosub 40"
-.print "26 if c = 2 or c = 3 then gosub 100"
-//.print "29 if r = 1 then sys " + 
-.print "30 if c <> 3 goto 10"
-.print @"32 for x = " + dest_mem + " to " + dest_mem + " + l"
-.print "33 if peek(x) = 0 goto 10"
-.print "34 print chr$(peek(x));"
-.print "35 next x"
-.print "39 goto 10"
-.print @"40 input \"enter string: \";a$"
-.print "45 for i=1 to len(a$)"
-.print "50 x=asc(mid$(a$, i, 1))"
-.print "55 poke " + cmd_args + "+(i-1),x"
-.print "60 next i"
-.print "65 poke " + cmd_args + "+(i-1), 0"
-.print "70 return"
-.print @"100 input \"enter length (read/dump)\"; l"
-.print @"105 if l > 32767 then print \"val too high\": err=0 : return"
-.print "110 poke " + cmd_args + ", (l and 255)"
-.print "120 poke " + cmd_args + " + 1, int(l / 256)"
-.print "150 return"
-.print "run"
+//.pc=gl.vic_base + $2000   // 8k after vic base
+.namespace sprites {
+start:
+//.segment _sprites [start = gl.vic_base + $2000]
+left_upper:
+    .fill 6, $ff
+    .fill 19, [$c0, $00, $00]
+    .byte 0
+right_lower:
+    .fill 19, [$00, $00, $03]
+    .fill 6, $ff
+    .byte 0
+end:
+}
+// .print "argaddress: poke " + cmd_args + ",1"
 
 .var testdriver = createFile("testdriver.bas")
 .eval testdriver.writeln(@"10 input \"command\"; a$")
@@ -188,7 +303,7 @@ screen1:
 .eval testdriver.writeln("26 if c = 2 or c = 3 then gosub 100")
 //.eval testdriver.writeln("29 if r = 1 then sys " + process_cmd)
 .eval testdriver.writeln("30 if c <> 3 goto 10")
-.eval testdriver.writeln(@"32 for x = " + dest_mem + " to " + dest_mem + " + l")
+.eval testdriver.writeln(@"32 for x = " + gl.dest_mem + " to " + gl.dest_mem + " + l")
 .eval testdriver.writeln("33 if peek(x) = 0 goto 10")
 .eval testdriver.writeln("34 print chr$(peek(x));")
 .eval testdriver.writeln("35 next x")
