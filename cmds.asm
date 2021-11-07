@@ -68,10 +68,7 @@ echo:
 dump:
     lda #$02
     jsr prep_cmd
-    poke16_(parport.len, 6)
-    //adc16(parport.len, gl.dest_mem, parport.len)
-    poke16_(parport.buffer, cmd_lit)
-    jsr parport.start_write
+    uport_write(cmd_lit, 6)
 do_rcv:
     adc16(cmd_args, gl.dest_mem, parport.len)
     poke16_(parport.buffer, gl.dest_mem)    // destination address should match VIC window

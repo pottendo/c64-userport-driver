@@ -11,9 +11,16 @@ BasicUpstart2(main_entry)
 main_entry:
     memset(gl.dest_mem, 0, $2000)
     memset(gl.dest_mem + $3c00, $bc, $400)
-    memcpy(gl.vic_base + $2000, sprites.start, sprites.end - sprites.start)
+    memcpy(gl.vic_base + $2000, sprites.start, sprites.end - sprites.start) // move sprite data to matching vic address
     //memset($d800, $98, $200)
     poke8_(VIC.BgC, 0)
+    // enable SP2 as another digital output
+    poke16_(CIA2.TIA, $0001)        // load timer to enable shift
+    //clearbits(CIA2.CRA, %10101110)  // needed that this works?!
+    poke8_(CIA2.CRA, 0)
+    setbits(CIA2.CRA, %01010001)    // shift->send, force load and enable timer in continous mode
+    poke8_(CIA2.SDR, $ff)           // send %11111111, to start output
+
     show_screen(1, str.screen1)
     jsr prep_sprites
     jsr loopmenu
@@ -94,6 +101,16 @@ cmd6:
     sbc8(rl + 6, 11, tmp)            // -border($32) + spr-height(21px)
     poke8(cmd_args + 5, tmp)
     jsr mandel
+    rts
+cmd7:
+    lda CIA2.SDR
+    bne unset
+    poke8_(CIA2.SDR, $ff)
+    poke8_(VIC.BoC, GREEN)
+    rts
+unset:
+    poke8_(CIA2.SDR, $00)
+    poke8_(VIC.BoC, RED)
     rts
 cmd9:
     print(str.finished)
@@ -178,6 +195,7 @@ cmd_vec:
     cmdp('4', cmd4)
     cmdp('5', cmd5)
     cmdp('6', cmd6)
+    cmdp('7', cmd7)
     cmdp('9', cmd9)
     cmdp($ff, lastcmd)
 
@@ -270,6 +288,8 @@ screen1:
 .byte $0d
 .text "6) MANDELBROT"
 .byte $0d
+.text "7) TOGGLE ATN"
+.byte $0d
 .text "9) EXIT"
 .byte $0d
 .text "-------------SELECT#"
@@ -304,6 +324,9 @@ end:
 //.eval testdriver.writeln("29 if r = 1 then sys " + process_cmd)
 .eval testdriver.writeln("30 if c <> 3 goto 10")
 .eval testdriver.writeln(@"32 for x = " + gl.dest_mem + " to " + gl.dest_mem + " + l")
+.print "argaddress: poke " + cmd_args + ",1"
+.print "argaddress: poke " + cmd_args + ",1"
+.print "argaddress: poke " + cmd_args + ",1"
 .eval testdriver.writeln("33 if peek(x) = 0 goto 10")
 .eval testdriver.writeln("34 print chr$(peek(x));")
 .eval testdriver.writeln("35 next x")

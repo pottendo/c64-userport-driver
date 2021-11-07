@@ -9,6 +9,7 @@
     .label DIRB = base + 3
     .label TIA = base + 4
     .label TIB = base + 6
+    .label SDR = base + 12
     .label ICR = base + 13
     .label CRA = base + 14
     .label CRB = base + 15
@@ -22,6 +23,7 @@
     .label DIRB = base + 3
     .label TIA = base + 4
     .label TIB = base + 6
+    .label SDR = base + 12
     .label ICR = base + 13
     .label CRA = base + 14
     .label CRB = base + 15

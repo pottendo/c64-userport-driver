@@ -139,22 +139,22 @@ start_write:
     rts
 cont:
     uport_stop()                    // ensure that NMIs are not handled
-    poke8_(CIA2.DIRB, $ff)           // direction bits 1 -> output
+    poke8_(CIA2.SDR, 0)             // line -> low to tell C64 wants to write
+    poke8_(CIA2.DIRB, $ff)          // direction bits 1 -> output
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high
 
 loop:    
     ldy #$00
+    clearbits(CIA2.PORTA, %11111011)    // set PA2 low
     lda (buffer), y
     sta CIA2.PORTB
     
-//    clearbits(CIA2.PORTA, %11111011)
-//    ora #%00000100                  // toggle PA2 line to signal that a char is ready
-//    sta CIA2.PORTA
-  
+!:  inc VIC.BoC
     lda #%10000     // check if receiver is ready to accept next char
-!:  bit CIA2.ICR
+    bit CIA2.ICR
     beq !-
+    setbits(CIA2.PORTA, %00000100)    // set PA2 high
     inc buffer
     bne !+
     inc buffer + 1
@@ -169,8 +169,8 @@ done:
     //lda #%10000     // ensure last bits have sent
     //bit CIA2.ICR
     //beq *-3
-    
     poke8_(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
+    poke8_(CIA2.SDR, $ff)           // send %11111111, to tell C64 finished writing
     rts
 }
 
