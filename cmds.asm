@@ -8,18 +8,21 @@
 toggle_screen:
     lda cmd_args
     beq !+
-    sprite(0, "on")
-    sprite(7, "on")
-    init_screen(49, 153, main_.get_jst, main_.get_jst)
+    sprite(0, "on", -1)
+    sprite(7, "on", -1)
+    init_screen(49, 153, noop, noop)
     jsr screen.mode
     rts
 !:  
     //close_screen()
-    sprite(0, "off")
-    sprite(7, "off")
+    sprite(0, "off", -1)
+    sprite(7, "off", -1)
     jsr screen.rest
     rts
 
+noop:
+    rts
+    
 prep_cmd:
     tax     // cmd nr now in x
     lda #0
@@ -65,10 +68,10 @@ echo:
     jsr do_rcv
     print(gl.dest_mem)
     rts
-dump:
+dump1:
     lda #$02
     jsr prep_cmd
-    uport_write(cmd_lit, 6)
+    uport_write_(cmd_lit, 6)
 do_rcv:
     adc16(cmd_args, gl.dest_mem, parport.len)
     poke16_(parport.buffer, gl.dest_mem)    // destination address should match VIC window
@@ -79,14 +82,22 @@ do_rcv:
     rts
 read:
     lda #$03
-    jmp dump
+    jmp dump1
     rts
 mandel:
     lda #$04
     jsr prep_cmd
-    uport_write(cmd_lit, 10)    // 4 byte cmd, 2x3byte for coordinates
+    uport_write_(cmd_lit, 10)    // 4 byte cmd, 2x3byte for coordinates
     poke16_(cmd_args, 8000)
     jsr do_rcv
+    rts
+
+dump2:
+    lda #$05
+    jsr prep_cmd
+    uport_write_(cmd_lit, 6)
+    // dump back our rcv buffer with requested length
+    uport_write(gl.dest_mem, cmd_args)
     rts
     
 // numeric int args: max 16bit in little endian format
@@ -94,11 +105,12 @@ mandel:
 // commands must have exactly 4 chars
 cmd:        .byte $00           // poke the cmd nr. here
 cmd_start:
-cmd_init:   .text "INIT"        /* INIT<1|0> vic on or off */
+cmd_init:   .text "INIT"        /* INIT<1|0> gfx on or off */
 cmd_sndstr: .text "ECHO"        /* ECHO<addr> */
-cmd_dump:   .text "DUMP"        /* DUMP<len> */
+cmd_dump1:  .text "DUM1"        /* DUM1<len> */
 cmd_read:   .text "READ"        
-cmd_mandel: .text "MAND"        
+cmd_mandel: .text "MAND"        /* MAND<16bx8by> */
+cmd_dump2:  .text "DUM2"        /* DUM2<len> */
 cmd_lit:    .fill 4, $00        // here the command is put
 cmd_args:   .fill 256, i        // poke the args here
 cmd_inv:    .text "INVALID COMMAND."

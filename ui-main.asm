@@ -11,24 +11,25 @@ BasicUpstart2(main_entry)
 main_entry:
     memset(gl.dest_mem, 0, $2000)
     memset(gl.dest_mem + $3c00, $bc, $400)
-    memcpy(gl.vic_base + $2000, sprites.start, sprites.end - sprites.start) // move sprite data to matching vic address
+    jsr prep_sprites
     //memset($d800, $98, $200)
     poke8_(VIC.BgC, 0)
+
     // enable SP2 as another digital output
     poke16_(CIA2.TIA, $0001)        // load timer to enable shift
-    //clearbits(CIA2.CRA, %10101110)  // needed that this works?!
-    poke8_(CIA2.CRA, 0)
+    // clearbits(CIA2.CRA, %10101110)  // doesn't work, need to set full reg to 0; see next line
+    poke8_(CIA2.CRA, 0)             // needed that this works?!
     setbits(CIA2.CRA, %01010001)    // shift->send, force load and enable timer in continous mode
     poke8_(CIA2.SDR, $ff)           // send %11111111, to start output
 
     show_screen(1, str.screen1)
-    jsr prep_sprites
     jsr loopmenu
 exit:
     rts
 
 loopmenu:
-    //jsr get_jst
+    jsr get_jst
+    jsr delay
     jsr STD.GETIN
     beq loopmenu
     ldx #0
@@ -72,7 +73,7 @@ cmd1:
 cmd2:
     print(str.inputnumber)
     rnum(cmd_args)
-    jsr dump
+    jsr dump1
     rts
 cmd3:
     wstring(0, 20, cmd3_)
@@ -86,7 +87,8 @@ cmd5:
     rnum(cmd_args)
     sta loopc
     poke16_(cmd_args, (1024 * 4) - 1)
-!:  jsr dump
+!:  jsr dump1
+    jsr delay
     dec loopc
     bne !-
     rts
@@ -96,9 +98,9 @@ cmd6:
     sbc8(lu + 6, $32, tmp)    
     poke8(cmd_args + 2, tmp)
 
-    sbc16(rl, 24 - $18, tmp)  // -border($18) + spr-width(24px)
+    sbc16(rl, 24 - $18 * 2, tmp)  // -border($18) + spr-width(24px)
     poke16(cmd_args + 3, tmp)
-    sbc8(rl + 6, 11, tmp)            // -border($32) + spr-height(21px)
+    sbc8(rl + 6, 31*0 + 8, tmp)     // -border($32) + spr-height(21px)
     poke8(cmd_args + 5, tmp)
     jsr mandel
     rts
@@ -107,6 +109,11 @@ cmd7:
     bne unset
     poke8_(CIA2.SDR, $ff)
     poke8_(VIC.BoC, GREEN)
+    rts
+cmd8:
+    print(str.inputnumber)
+    rnum(cmd_args)
+    jsr dump2
     rts
 unset:
     poke8_(CIA2.SDR, $00)
@@ -121,11 +128,15 @@ lastcmd:
     rts
 
 prep_sprites:
-    sprite(0, "on")
-    sprite(7, "on")
-
+    memcpy(gl.vic_base + $2000, sprites.start, sprites.end - sprites.start) // move sprite data to matching vic address
     sprite_sel_(0, 0)
     sprite_sel_(7, 1)
+    sprite(0, "color", LIGHT_BLUE)
+    sprite(7, "color", LIGHT_RED)
+    sprite(0, "expx", "on")
+    sprite(0, "expy", "on")
+    sprite(7, "expx", "on")
+    sprite(7, "expy", "on")
     rts
 
 decx:
@@ -134,9 +145,12 @@ decx:
     bne !+
     sprite_move("left", lu)
     rts
-!:  
+!: 
+    sbc16(lu, 22*2, P.tmp)
+    cmp16(rl, P.tmp)
+    beq !+
     sprite_move("left", rl)
-    rts
+!:  rts
 incx:
     lda selstate
     cmp #$02
@@ -153,8 +167,11 @@ decy:
     sprite_move("up", lu)
     rts
 !:
+    sbc8(lu + 6, 19*2, P.tmp)
+    cmp8(rl + 6, P.tmp)
+    beq !+
     sprite_move("up", rl)
-    rts
+!:  rts
 incy:
     lda selstate
     cmp #$02
@@ -163,7 +180,6 @@ incy:
     rts
 !:
     sprite_move("down", rl)
-
     rts
     
 fire:
@@ -178,14 +194,38 @@ shipit:
     rts
 
 get_jst:
+    poke8_(P.joyaction, 0)
     on_joy("left", decx)
     on_joy("right", incx)
     on_joy("up", decy)
     on_joy("down", incy)
-    on_joy("fire", fire)
+    on_joyfire("fire", fire)
     sprite_pos(0, lu, lu + 6)
     sprite_pos(7, rl, rl + 6)
     rts
+
+delay:
+!:  dec16(delay_loop)
+    cmp16_(delay_loop, 0)
+    bne !-
+    lda P.joyaction
+    beq reload
+    ldx delay_idx
+    lda delays, x
+    sta delay_loop + 1
+    dex
+    lda delays, x
+    sta delay_loop
+    dex
+    cpx #$ff
+    bne !+
+    ldx #$01
+!:  stx delay_idx
+    rts
+reload:
+    poke8_(delay_idx, $07)
+    poke16(delay_loop, delays+6)    // back to start
+    rts 
     
 cmd_vec:
     cmdp('0', cmd0)
@@ -196,6 +236,7 @@ cmd_vec:
     cmdp('5', cmd5)
     cmdp('6', cmd6)
     cmdp('7', cmd7)
+    cmdp('8', cmd8)
     cmdp('9', cmd9)
     cmdp($ff, lastcmd)
 
@@ -214,20 +255,23 @@ scrfill:    .byte $00
 loopc:      .byte $00
 selstate:   .byte $02
 tmp:        .word $0000
+delay_loop: .word $0400
+delays:     .word $100, $800, $800, $1000
+delay_idx:  .byte $7
 // left upper
-lu:         .word $0018     // x-coord
-            .word $0018     // x-coord lower boundary
-            .word $0140     // x-coord upper boundary
-            .byte $32       // y-coord
-            .byte $32       // y-coord lower boundary
-            .byte $e5       // y-coord upport boundry
+lu:         .word $0018         // x-coord
+            .word $0018         // x-coord lower boundary
+            .word $18 + 320 - 1 // x-coord upper boundary: border + 320 - 1
+            .byte $32           // y-coord
+            .byte $32           // y-coord lower boundary: border
+            .byte $32 + 200 - 1 // y-coord upper boundry: border + 200 - 1
 // right lower
-rl:         .word $0141
-            .word $0018
-            .word $0141
-            .byte $e6
-            .byte $32
-            .byte $e6
+rl:         .word $18 + 320 - 24*2 // x-coord
+            .word $0018 - 24*2 + 1 // x-coord lower boundary: border - sprw + 1
+            .word $18 + 320 - 24*2 // x-coord upper boundary: border + 320 - sprw
+            .byte $32 + 200 - 21*2 // ycoord
+            .byte $32 - 21*2 + 1   // ycoord lower boundary: border - sprw + 1
+            .byte $32 + 200 - 21*2 // ycoord upper boundary: border + 200 - sprh
 
 .macro sprite_move(action, addr)
 {
@@ -290,6 +334,8 @@ screen1:
 .byte $0d
 .text "7) TOGGLE ATN"
 .byte $0d
+.text "8) DUMP DATA C64->ESP"
+.byte $0d
 .text "9) EXIT"
 .byte $0d
 .text "-------------SELECT#"
@@ -302,12 +348,12 @@ screen1:
 start:
 //.segment _sprites [start = gl.vic_base + $2000]
 left_upper:
-    .fill 6, $ff
-    .fill 19, [$c0, $00, $00]
+    .fill 3, $ff
+    .fill 20, [$80, $00, $00]
     .byte 0
 right_lower:
-    .fill 19, [$00, $00, $03]
-    .fill 6, $ff
+    .fill 20, [$00, $00, $01]
+    .fill 3, $ff
     .byte 0
 end:
 }
@@ -324,6 +370,7 @@ end:
 //.eval testdriver.writeln("29 if r = 1 then sys " + process_cmd)
 .eval testdriver.writeln("30 if c <> 3 goto 10")
 .eval testdriver.writeln(@"32 for x = " + gl.dest_mem + " to " + gl.dest_mem + " + l")
+.print "argaddress: poke " + cmd_args + ",1"
 .print "argaddress: poke " + cmd_args + ",1"
 .print "argaddress: poke " + cmd_args + ",1"
 .print "argaddress: poke " + cmd_args + ",1"

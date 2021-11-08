@@ -47,11 +47,14 @@
     .label IRR = base + $19
     .label IMR = base + $1A
     .label CR1 = base + $11
-    .label CR2 = base + $16
     .label RASTER = base + $12
+    .label SprEnable = base + $15
+    .label CR2 = base + $16
+    .label SprExpY = base + $17
+    .label SprExpX = base + $1D
     .label BoC = base + $20
     .label BgC = base + $21
-    .label SprEnable = base + $15
+    .label SprColBase = base + $27
 }
 
 // utility functions
@@ -161,6 +164,7 @@ digitseen:  .byte $00
 dezcount:   .byte $00
 binaries:   .byte $01, $02, $04, $08, $10, $20, $40, $80
 joy_ack:    .byte $01
+joyaction:  .byte $00
 tmp:        .word $0000
 }
 
@@ -315,6 +319,16 @@ zero:
     jsr P._print
 }
 
+.macro cmp16_(a, b)
+{
+    lda a + 1
+    cmp #>b
+    bne !+
+    lda a
+    cmp #<b
+!:
+}
+
 // compare 16 bit vals a/a+1 vs. b/b+1, 
 // check BCC lower, BNE higher, BEQ same
 .macro cmp16(a, b)
@@ -443,7 +457,7 @@ rep:
 }
 
 // Spr# 0-7, "on"/"off"
-.macro sprite(sprno, a)
+.macro sprite(sprno, a, b)
 {
     .if (a == "on")
     {
@@ -452,13 +466,47 @@ rep:
         ora VIC.SprEnable
         sta VIC.SprEnable
     }
-    else
+    .if (a == "off")
     {
         ldx #sprno
         lda P.binaries, x
         eor #$ff
         and VIC.SprEnable
         sta VIC.SprEnable
+    }
+    .if (a == "color")
+    {
+        ldx #sprno
+        lda #b
+        sta VIC.SprColBase, x
+    }
+    .if (a == "expx")
+    {
+        ldx #sprno
+        lda P.binaries, x
+        .if (b == "on")
+        {
+            ora VIC.SprExpX
+            sta VIC.SprExpX
+        } else {
+            eor #$ff
+            and VIC.SprExpX
+            sta VIC.SprExpX
+        }
+    }
+    .if (a == "expy")
+    {
+        ldx #sprno
+        lda P.binaries, x
+        .if (b == "on")
+        {
+            ora VIC.SprExpY
+            sta VIC.SprExpY
+        } else {
+            eor #$ff
+            and VIC.SprExpY
+            sta VIC.SprExpY
+        }
     }
 }
 
@@ -520,31 +568,26 @@ clhb:
     .if (a == "right"){
         lda CIA1.PORTA
         and #$08
-        bne !+
-        jsr fn 
-    !: 
-    }
+    }    
     .if (a == "left"){
         lda CIA1.PORTA
         and #$04
-        bne !+
-        jsr fn 
-    !: 
     }
     .if (a == "down"){
         lda CIA1.PORTA
         and #$02
-        bne !+
-        jsr fn 
-    !: 
     }
     .if (a == "up"){
         lda CIA1.PORTA
         and #$01
-        bne !+
-        jsr fn 
-    !: 
     }
+    bne !+
+    jsr fn
+    poke8_(P.joyaction, 1)
+!: 
+}
+.macro on_joyfire(a, fn)
+{
     .if (a == "fire"){
         lda #$10
         bit CIA1.PORTA

@@ -28,9 +28,17 @@
     jsr parport.stop_isr
 }
 
-.macro uport_write(from, len) {
+// from: addr, len: scalar
+.macro uport_write_(from, len) {
     poke16_(parport.buffer, from)
     poke16_(parport.len, len)
+    jsr parport.start_write
+}
+
+// from: addr, len: addr
+.macro uport_write(from, len) {
+    poke16_(parport.buffer, from)
+    poke16(parport.len, len)
     jsr parport.start_write
 }
 
@@ -169,6 +177,7 @@ done:
     //lda #%10000     // ensure last bits have sent
     //bit CIA2.ICR
     //beq *-3
+    clearbits(CIA2.PORTA, %11111011)    // set PA2 low
     poke8_(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
     poke8_(CIA2.SDR, $ff)           // send %11111111, to tell C64 finished writing
     rts
