@@ -105,29 +105,23 @@ out:
 
 sync_read:
     poke8_(read_pending, 0)
+    poke8_(CIA2.SDR, $ff)
     poke8_(CIA2.DIRB, $00)           // direction bit 0 -> input
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
     ldy #$00
-    poke16_(32768,0)
 next:
     clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
 //    lda #%10000
 //!:  bit CIA2.ICR
 //    beq !-
-!:  
+!:  inc VIC.BoC
     lda CIA2.ICR
-    nop
-    nop
-    nop
-    nop
     and #%00010000
     beq !-
 
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy
     lda CIA2.PORTB
     sta (buffer), y
-    inc VIC.BoC
-    inc16(32768)
     inc buffer      
     bne !+
     inc buffer + 1
