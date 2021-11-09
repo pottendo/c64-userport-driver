@@ -58,6 +58,7 @@ start_isr:
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
     //setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're sending
     clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
+    poke8_(CIA2.SDR, $ff)
     lda CIA2.ICR                    // clear interrupt flags by reading
     poke8_(CIA2.ICR, %10010000)      // enable FLAG pin as interrupt source
     poke8_(read_pending, $01)
@@ -99,7 +100,8 @@ flag_isr:
 //    jmp !+
 out:
 !:
-    clearbits(CIA2.PORTA, %11111011)   // set PA2 to low to signal we're ready to receive
+    clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
+    //setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy
     restore_regs()
     rti
 
@@ -117,7 +119,7 @@ next:
 !:  inc VIC.BoC
     lda CIA2.ICR
     and #%00010000
-    beq !-
+    bne !-
 
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy
     lda CIA2.PORTB
