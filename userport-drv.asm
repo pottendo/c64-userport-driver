@@ -101,16 +101,16 @@ flag_isr:
 out:
 !:
     clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
-    //setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy
     restore_regs()
     rti
 
 sync_read:
     poke8_(read_pending, 0)
     poke8_(CIA2.SDR, $ff)
-    poke8_(CIA2.DIRB, $00)           // direction bit 0 -> input
+    poke8_(CIA2.DIRB, $00)          // direction bit 0 -> input
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
     ldy #$00
+    lda CIA2.PORTB  // dummy read to trigger TC2
 next:
     clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
 //    lda #%10000
@@ -118,8 +118,11 @@ next:
 //    beq !-
 !:  inc VIC.BoC
     lda CIA2.ICR
+    nop 
+    nop
+    nop
     and #%00010000
-    bne !-
+    beq !-
 
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy
     lda CIA2.PORTB
