@@ -8,7 +8,7 @@
 #import "pottendos_utils.asm"
 #import "userport-drv.asm"
 
-.pc=$6400       // to be consistent with 'pottendosetup' line ~7267 in ccgms-2021.asm
+.pc=$6500       // to be consistent with 'pottendosetup' line ~7267 in ccgms-2021.asm
 
 .word pottendo_setup
 .word pottendo_out
@@ -31,6 +31,7 @@ pottendo_out:
     bne !+
     pla
     inc VIC.BoC
+    jsr parport.write_byte
     rts
 !:
     pla

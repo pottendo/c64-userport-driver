@@ -44,14 +44,44 @@
 .macro uport_write_(from, len) {
     poke16_(parport.buffer, from)
     poke16_(parport.len, len)
-    jsr parport.start_write
+    jsr parport.write_buffer
 }
 
 // from: addr, len: addr
 .macro uport_write(from, len) {
     poke16_(parport.buffer, from)
     poke16(parport.len, len)
-    jsr parport.start_write
+    jsr parport.write_buffer
+}
+
+.macro setup_write()
+{
+    uport_stop()                    // ensure that NMIs are not handled
+    poke8_(CIA2.SDR, 0)             // line -> low to tell C64 wants to write
+    poke8_(CIA2.DIRB, $ff)          // direction bits 1 -> output
+    setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
+    setbits(CIA2.PORTA, %00000100)  // set PA2 to high
+}
+
+.macro close_write()
+{
+    clearbits(CIA2.PORTA, %11111011) // set PA2 low
+    poke8_(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
+    poke8_(CIA2.SDR, $ff)            // send %11111111, to tell C64 finished writing
+}
+
+// write byte from acc to parport
+.macro out_byte() {
+    pha
+    clearbits(CIA2.PORTA, %11111011)    // set PA2 low
+    pla
+    sta CIA2.PORTB
+    
+!:  inc VIC.BoC
+    lda #%10000     // check if receiver is ready to accept next char
+    bit CIA2.ICR
+    beq !-
+    setbits(CIA2.PORTA, %00000100)    // set PA2 high
 }
 
 // .segment _par_drv
@@ -69,7 +99,6 @@ start_isr:
     poke16_(STD.NMI_VEC, flag_isr)   // reroute NMI
     poke8_(CIA2.DIRB, $00)           // direction bit 0 -> input
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
-    //setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're sending
     clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
     poke8_(CIA2.SDR, $ff)
     lda CIA2.ICR                    // clear interrupt flags by reading
@@ -103,11 +132,6 @@ nread:
 !:
     cmp16(buffer, len) 
     bcc out
-    // reset rcv buffer
-    //lda parport.dest
-    //sta buffer
-    //lda parport.dest + 1
-    //sta buffer + 1
     uport_stop()
     poke8_(read_pending, $00)
 out:
@@ -132,9 +156,6 @@ sync_read:
     lda CIA2.PORTB  // dummy read to trigger TC2
 next:
     clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
-//    lda #%10000
-//!:  bit CIA2.ICR
-//    beq !-
 !:  inc VIC.BoC
     lda CIA2.ICR
     nop 
@@ -156,7 +177,8 @@ next:
     poke8_(read_pending, 0);
     rts
 
-start_write:
+
+write_buffer:
     // sanity check for len == 0
     lda len + 1
     bne cont
@@ -164,23 +186,12 @@ start_write:
     bne cont
     rts
 cont:
-    uport_stop()                    // ensure that NMIs are not handled
-    poke8_(CIA2.SDR, 0)             // line -> low to tell C64 wants to write
-    poke8_(CIA2.DIRB, $ff)          // direction bits 1 -> output
-    setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
-    setbits(CIA2.PORTA, %00000100)  // set PA2 to high
+    setup_write()
 
 loop:    
     ldy #$00
-    clearbits(CIA2.PORTA, %11111011)    // set PA2 low
     lda (buffer), y
-    sta CIA2.PORTB
-    
-!:  inc VIC.BoC
-    lda #%10000     // check if receiver is ready to accept next char
-    bit CIA2.ICR
-    beq !-
-    setbits(CIA2.PORTA, %00000100)    // set PA2 high
+    out_byte()
     inc buffer
     bne !+
     inc buffer + 1
@@ -192,13 +203,17 @@ loop:
     dec len + 1
     jmp loop
 done:
-    //lda #%10000     // ensure last bits have sent
-    //bit CIA2.ICR
-    //beq *-3
-    clearbits(CIA2.PORTA, %11111011)    // set PA2 low
-    poke8_(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
-    poke8_(CIA2.SDR, $ff)           // send %11111111, to tell C64 finished writing
+    close_write()
+    rts
+
+write_byte:
+    pha
+    setup_write()
+    pla
+    out_byte()
+    close_write()
     rts
 }
 
+    
 __END__:    nop

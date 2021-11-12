@@ -54,7 +54,7 @@ echo:
 !:  inx             // send also the '0' char
     stx parport.len
     poke16_(parport.buffer, cmd_lit)
-    jsr parport.start_write
+    jsr parport.write_buffer
     dex             // 4 chars command + '0'
     dex
     dex
