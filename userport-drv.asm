@@ -1,6 +1,7 @@
 #import "pottendos_utils.asm"
 
-.macro uport_read(dest, len) {
+// dest: addr, len: scalar
+.macro uport_read_(dest, len) {
     lda #<dest
     ldy #>dest
     sta parport.len
@@ -20,7 +21,18 @@
     clc
     adc #>len
     sta parport.len + 1
-    inc $d020    
+
+    lda #(parport.nread - parport.jm - 2)
+    sta parport.jm + 1  // modify operand of ISR branch
+    jsr parport.start_isr
+}
+
+.macro uport_lread(dest)
+{
+    poke8_(parport.rtail, 0)
+    lda #(parport.loopread - parport.jm - 2)
+    sta parport.jm + 1  // modify jump address for loopread
+    poke16_(parport.buffer, dest)
     jsr parport.start_isr
 }
 
@@ -49,6 +61,7 @@ parport: {
 len:            .word $0000     // len of requested read
 dest:           .word $0400     // destination address
 read_pending:   .byte $00       // flag if read is on-going
+rtail:          .byte $00
 
 // Interrupt driven read, finished when read_pending == 1
 start_isr:
@@ -76,10 +89,10 @@ flag_isr:
     save_regs()
     lda CIA2.ICR
     and #%10000 // FLAG pin interrupt (bit 4)
-    bne !+
+jm: bne nread  // modified operand in case of loop read
     jmp STD.NMI
     // receive char now
-!:
+nread:
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy receiving
     ldy #$00
     lda CIA2.PORTB  // read chr from the parallel port B
@@ -97,12 +110,18 @@ flag_isr:
     //sta buffer + 1
     uport_stop()
     poke8_(read_pending, $00)
-//    jmp !+
 out:
-!:
     clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
     restore_regs()
     rti
+
+loopread:
+    setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy receiving
+    lda CIA2.PORTB  // read chr from the parallel port B
+rt1:ldy rtail       // operand potentially modified to point to ccgms
+    sta (buffer),y
+rt2:inc rtail       // operand potentially modified to point to ccgms
+    jmp out      
 
 sync_read:
     poke8_(read_pending, 0)

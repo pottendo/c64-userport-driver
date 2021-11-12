@@ -6,9 +6,9 @@
 
 #import "globals.asm"
 #import "pottendos_utils.asm"
-#import "cmds.asm"
+#import "userport-drv.asm"
 
-.pc=$9000
+.pc=$6400       // to be consistent with 'pottendosetup' line ~7267 in ccgms-2021.asm
 
 .word pottendo_setup
 .word pottendo_out
@@ -19,7 +19,9 @@ pottendo_setup:
     poke16_($326, pottendo_out)
     poke16_($32a, pottendo_in)
     jsr ccgms.clear232
-
+    poke16_(parport.rt1 + 1, ccgms.rtail)       // modify rtail operand for loopread
+    poke16_(parport.rt2 + 1, ccgms.rtail)
+    uport_lread(ccgms.ribuf)
     rts
 
 pottendo_out:
@@ -28,12 +30,11 @@ pottendo_out:
     cmp #02
     bne !+
     pla
-
+    inc VIC.BoC
     rts
 !:
     pla
 	jmp  ccgms.oldout
 
 pottendo_in:
-    inc VIC.BoC
     jmp ccgms.rsget

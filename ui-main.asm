@@ -13,7 +13,7 @@ main_entry:
     memset(gl.dest_mem + $3c00, $bc, $400)
     jsr prep_sprites
     //memset($d800, $98, $200)
-    poke8_(VIC.BgC, 0)
+    //poke8_(VIC.BgC, 0)
 
     // enable SP2 as another digital output
     poke16_(CIA2.TIA, $0001)        // load timer to enable shift
@@ -110,15 +110,32 @@ cmd7:
     poke8_(CIA2.SDR, $ff)
     poke8_(VIC.BoC, GREEN)
     rts
+unset:
+    poke8_(CIA2.SDR, $00)
+    poke8_(VIC.BoC, RED)
+    rts
 cmd8:
     print(str.inputnumber)
     rnum(cmd_args)
     jsr dump2
     rts
-unset:
-    poke8_(CIA2.SDR, $00)
-    poke8_(VIC.BoC, RED)
+
+cmdterminal:
+    print(str.inputtext)
+    uport_lread($0680)
+
+!:  jsr STD.GETIN
+    beq !-
+    cmp #$0d
+    beq !+
+    jsr STD.BSOUT
+
+    jmp !-
+!:
+    uport_stop()
+    show_screen(1, str.screen1)
     rts
+    
 cmd9:
     print(str.finished)
     pla         // clear stack from last return address
@@ -238,6 +255,7 @@ cmd_vec:
     cmdp('7', cmd7)
     cmdp('8', cmd8)
     cmdp('9', cmd9)
+    cmdp('T', cmdterminal)
     cmdp($ff, lastcmd)
 
 .macro cmdp(c, addr)
@@ -335,6 +353,8 @@ screen1:
 .text "7) TOGGLE ATN"
 .byte $0d
 .text "8) DUMP DATA C64->ESP"
+.byte $0d
+.text "T) TERMINAL"
 .byte $0d
 .text "9) EXIT"
 .byte $0d
