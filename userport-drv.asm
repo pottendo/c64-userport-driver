@@ -76,8 +76,10 @@
     clearbits(CIA2.PORTA, %11111011)    // set PA2 low
     pla
     sta CIA2.PORTB
-    
-!:  inc VIC.BoC
+!:  
+    nop
+    nop
+    nop
     lda #%10000     // check if receiver is ready to accept next char
     bit CIA2.ICR
     beq !-
@@ -104,7 +106,6 @@ start_isr:
     lda CIA2.ICR                    // clear interrupt flags by reading
     poke8_(CIA2.ICR, %10010000)      // enable FLAG pin as interrupt source
     poke8_(read_pending, $01)
-    deb(65)
     rts
 
 stop_isr:
@@ -177,7 +178,6 @@ next:
     poke8_(read_pending, 0);
     rts
 
-
 write_buffer:
     // sanity check for len == 0
     lda len + 1
@@ -187,7 +187,6 @@ write_buffer:
     rts
 cont:
     setup_write()
-
 loop:    
     ldy #$00
     lda (buffer), y

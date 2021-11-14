@@ -1718,7 +1718,7 @@ msgtxt
 .byte 5,32
 .text "    tERMINAL 2021   "
 .byte 00
-author  .text "BY cRAIG sMITH       mODS BY aLWYZ   "
+author  .text "BY cRAIG sMITH mODS BY aLWYZ/POTTENDO"
 .byte 146,151,00
 ;
 instxt

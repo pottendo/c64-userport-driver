@@ -21,7 +21,7 @@ pottendo_setup:
     jsr ccgms.clear232
     poke16_(parport.rt1 + 1, ccgms.rtail)       // modify rtail operand for loopread
     poke16_(parport.rt2 + 1, ccgms.rtail)
-    uport_lread(ccgms.ribuf)
+    uport_lread(ccgms.ribuf)                    // activate background read
     rts
 
 pottendo_out:
@@ -30,8 +30,8 @@ pottendo_out:
     cmp #02
     bne !+
     pla
-    inc VIC.BoC
     jsr parport.write_byte
+    jsr parport.start_isr       // back to reading
     rts
 !:
     pla
