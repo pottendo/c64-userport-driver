@@ -15,12 +15,12 @@
 .word pottendo_in
 
 pottendo_setup:
-    inc VIC.BoC
     poke16_($326, pottendo_out)
     poke16_($32a, pottendo_in)
     jsr ccgms.clear232
     poke16_(parport.rt1 + 1, ccgms.rtail)       // modify rtail operand for loopread
-    poke16_(parport.rt2 + 1, ccgms.rtail)
+    poke16_(parport.rt2 + 1, ccgms.ribuf)
+    poke16_(parport.rt3 + 1, ccgms.rtail)
     uport_lread(ccgms.ribuf)                    // activate background read
     rts
 
@@ -35,7 +35,7 @@ pottendo_out:
     rts
 !:
     pla
-	jmp  ccgms.oldout
+	jmp ccgms.oldout
 
 pottendo_in:
     jmp ccgms.rsget

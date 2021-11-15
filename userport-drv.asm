@@ -77,9 +77,6 @@
     pla
     sta CIA2.PORTB
 !:  
-    nop
-    nop
-    nop
     lda #%10000     // check if receiver is ready to accept next char
     bit CIA2.ICR
     beq !-
@@ -99,11 +96,11 @@ rtail:          .byte $00
 start_isr:
     poke8_(CIA2.ICR, $7f)            // stop all interrupts
     poke16_(STD.NMI_VEC, flag_isr)   // reroute NMI
+    poke8_(CIA2.SDR, $ff)            // Signal C64 is in read-mode (safe for CIA)
     poke8_(CIA2.DIRB, $00)           // direction bit 0 -> input
-    setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
-    clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
-    poke8_(CIA2.SDR, $ff)
-    lda CIA2.ICR                    // clear interrupt flags by reading
+    setbits(CIA2.DIRA, %00000100)    // PortA r/w for PA2
+    clearbits(CIA2.PORTA, %11111011) // set PA2 to low to signal we're ready to receive
+    lda CIA2.ICR                     // clear interrupt flags by reading
     poke8_(CIA2.ICR, %10010000)      // enable FLAG pin as interrupt source
     poke8_(read_pending, $01)
     rts
@@ -144,8 +141,8 @@ loopread:
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy receiving
     lda CIA2.PORTB  // read chr from the parallel port B
 rt1:ldy rtail       // operand potentially modified to point to ccgms
-    sta (buffer),y
-rt2:inc rtail       // operand potentially modified to point to ccgms
+rt2:sta gl.dest_mem,y
+rt3:inc rtail       // operand potentially modified to point to ccgms
     jmp out      
 
 sync_read:
