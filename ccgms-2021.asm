@@ -8513,10 +8513,11 @@ baudrt .byte $02 ;2400 baud def
 mopo1  .byte $00 ;used to be pick up byte - unused and will now be atdt/atd byte - 00-atdt - 01-atd
 mopo2  .byte $20 ;hang up
 ;
-motype .byte $00 ;0=User Port, 1=UP9600
+motype .byte $05 ;0=User Port, 1=UP9600
 ;^modem type^   ;2=Swiftlink DE
                 ;3=Swiftlink D7
                 ;4=Swiftlink DF
+                ;5=pottendos prallel
 ;
 phbmem ;reserve mem for phbook
 ;.text 0,6,'aFTERLIFE         ','192.168.0.8     ',0,'               ',0,'6401 ',0,'myuserid   ',0,'mypassword1',0

@@ -143,7 +143,16 @@ loopread:
 rt1:ldy rtail       // operand potentially modified to point to ccgms
 rt2:sta gl.dest_mem,y
 rt3:inc rtail       // operand potentially modified to point to ccgms
-    jmp out      
+    tya 
+    sec
+rt4:sbc $beef       // modified to point to ccgms
+    cmp #227
+    bcc out         // enough room in buffer
+    clearbits(CIA2.PORTA, %11111011) // clear PA2 to low to acknowledge last byte
+    setbits(CIA2.PORTA, %00000100)   // set PA2 to high to signal we're busy -> FlowControl
+    poke8_(VIC.BoC, RED)             // show wer're blocking
+    restore_regs()
+    rti
 
 sync_read:
     poke8_(read_pending, 0)
