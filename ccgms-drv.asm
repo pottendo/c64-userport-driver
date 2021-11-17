@@ -65,7 +65,7 @@ rsgetxfer:
     cmp #24
     bcc !+           
     clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
-    poke8_(VIC.BoC, GREEN)
+    poke8_(VIC.BoC, BLACK)
 !:  clc
 	pla
 !:	rts
