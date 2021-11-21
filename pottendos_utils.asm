@@ -254,6 +254,17 @@ tmp:        .word $0000
     adc #>b 
     sta res + 1
 }
+// scalar, scalar, addr of res-meme
+.macro adc16_(a, b, res) 
+{   
+    clc
+    lda #<a
+    adc #<b
+    sta res
+    lda #>a
+    adc #>b 
+    sta res + 1
+}
 
 .macro adc8(a, b, res)
 {
@@ -452,6 +463,27 @@ rep:
     sta (P.zpp1), y
     inc16(P.zpp2)
     inc16(P.zpp1)
+    jmp l1
+!:
+}
+
+.macro memcpy_d(dst, src, n)
+{
+.if (n == 0)
+    {   
+        .error "memcpy with 0 length"
+    }
+    poke16_(P.tmp, dst)
+    adc16_(dst, n-1, P.zpp1)    // 0'th byte is also copied
+    adc16_(src, n-1, P.zpp2)
+    ldy #$00
+ l1:
+    lda (P.zpp2), y
+    sta (P.zpp1), y
+    cmp16(P.zpp1, P.tmp)
+    beq !+
+    dec16(P.zpp2)
+    dec16(P.zpp1)
     jmp l1
 !:
 }

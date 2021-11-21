@@ -25,6 +25,19 @@
     lda #(parport.nread - parport.jm - 2)
     sta parport.jm + 1  // modify operand of ISR branch
     jsr parport.start_isr
+    lda parport.read_pending            // busy wait until read is completed
+    bne *-3
+}
+// dest: addr, len: addr
+.macro uport_read(dest, len)
+{
+    adc16(len, dest, parport.len)
+    poke16_(parport.buffer, dest)   
+    lda #(parport.nread - parport.jm - 2)
+    sta parport.jm + 1      // modify operand of ISR branch to
+    jsr parport.start_isr   // launch interrupt driven read
+    lda parport.read_pending            // busy wait until read is completed
+    bne *-3
 }
 
 .macro uport_lread(dest)
@@ -91,7 +104,13 @@ len:            .word $0000     // len of requested read
 dest:           .word $0400     // destination address
 read_pending:   .byte $00       // flag if read is on-going
 rtail:          .byte $00
+pinput_pending: .byte $00       // #of msg the esp would like to send, inc'ed by NMI/Flag2
 
+init:
+    poke8_(read_pending, 0)
+    sta pinput_pending          // acc still 0
+    rts
+    
 // Interrupt driven read, finished when read_pending == 1
 start_isr:
     poke8_(CIA2.ICR, $7f)            // stop all interrupts
@@ -132,6 +151,7 @@ nread:
     bcc out
     uport_stop()
     poke8_(read_pending, $00)
+
 out:
     clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
     restore_regs()
@@ -218,6 +238,24 @@ write_byte:
     out_byte()
     close_write()
     rts
+
+arm_msgcnt:
+    poke8_(CIA2.ICR, $7f)           // stop all interrupts
+    poke16_(STD.NMI_VEC, msg_cnt)   // reroute NMI
+    //clearbits(CIA2.PORTA, %11111011) // clear PA2 to low to allow sync for write
+    setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're waiting for sync
+    lda CIA2.ICR                     // clear interrupt flags by reading
+    poke8_(CIA2.ICR, %10010000)      // enable FLAG pin as interrupt source
+    rts
+msg_cnt:
+    save_regs()
+    lda CIA2.ICR
+    and #%10000 // FLAG pin interrupt (bit 4)
+    bne !+
+    jmp STD.NMI   
+!:  inc pinput_pending
+    restore_regs()
+    rti
 }
 
     

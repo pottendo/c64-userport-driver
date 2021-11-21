@@ -73,12 +73,7 @@ dump1:
     jsr prep_cmd
     uport_write_(cmd_lit, 6)
 do_rcv:
-    adc16(cmd_args, gl.dest_mem, parport.len)
-    poke16_(parport.buffer, gl.dest_mem)    // destination address should match VIC window
-    jsr parport.start_isr               // launch interrupt driven read
-    //jsr parport.sync_read
-    lda parport.read_pending            // busy wait until read is completed
-    bne *-3
+    uport_read(gl.dest_mem, cmd_args)
     rts
 read:
     lda #$03

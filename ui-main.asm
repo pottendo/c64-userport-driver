@@ -6,9 +6,11 @@ BasicUpstart2(main_entry)
 #import "globals.asm"
 #import "pottendos_utils.asm"
 #import "cmds.asm"
+#import "irc.asm"
 
 // .segment _main
 main_entry:
+    jsr parport.init
     memset(gl.dest_mem, 0, $2000)
     memset(gl.dest_mem + $3c00, $bc, $400)
     jsr prep_sprites
@@ -136,6 +138,9 @@ cmdterminal:
     show_screen(1, str.screen1)
     rts
     
+cmdirc:
+    jsr irc.setup
+    rts
 cmd9:
     print(str.finished)
     pla         // clear stack from last return address
@@ -256,6 +261,7 @@ cmd_vec:
     cmdp('8', cmd8)
     cmdp('9', cmd9)
     cmdp('T', cmdterminal)
+    cmdp('I', cmdirc)
     cmdp($ff, lastcmd)
 
 .macro cmdp(c, addr)
@@ -355,6 +361,8 @@ screen1:
 .text "8) DUMP DATA C64->ESP"
 .byte $0d
 .text "T) TERMINAL"
+.byte $0d
+.text "I) IRC"
 .byte $0d
 .text "9) EXIT"
 .byte $0d
