@@ -5,9 +5,10 @@ seperator:  .text "----------------------------------------"
             .byte $00
 .label inputaddr = $0400 + 23*40
 crs:        .byte $00
-.label rcvbuffer = $0400
+tlen:       .word $0000
 .label msgbuf  = $9000
 .label buflen = $0800
+.label rcvbuffer = msgbuf + buflen
 .label msgptr = $14
 .label currptr = $16
 .label newentrypos = $0400 + 17 * 40
@@ -57,7 +58,7 @@ store_input:
     sta rcvbuffer + 1, x 
     dex
     bpl !-
-    jsr cpy2msgbuf
+    jsr send_msg
     rts
 
 rcv_msgs:
@@ -130,6 +131,26 @@ p1: sta newentrypos - 1, y  // modified operand dep. 1 or 2 lines
     bcc !+
     poke16_(currptr, msgbuf)
 !:
+    rts
+
+send_msg:
+    ldy rcvbuffer
+    cpy #$00
+    bne !+
+    rts
+!:  
+    iny
+    sty tlen
+    lda #$00
+    sta tlen + 1        // highbyte of len to be sent alway 0 as input < 80 chars
+    sta rcvbuffer, y
+!:  
+    lda rcvbuffer, y
+    sta cmd_args - 1, y // -1 to copy just data
+    dey
+    bne !-
+    uport_write(cmd_args, tlen)
+    inc VIC.BoC
     rts
 }
 
