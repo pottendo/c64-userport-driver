@@ -139,6 +139,7 @@ cmdterminal:
     rts
     
 cmdirc:
+    jsr irc_
     jsr irc.setup
     rts
 cmd9:

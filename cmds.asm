@@ -86,13 +86,17 @@ mandel:
     poke16_(cmd_args, 8000)
     jsr do_rcv
     rts
-
 dump2:
     lda #$05
     jsr prep_cmd
     uport_write_(cmd_lit, 6)
     // dump back our rcv buffer with requested length
     uport_write(gl.dest_mem, cmd_args)
+    rts
+irc_:
+    lda #$06
+    jsr prep_cmd
+    uport_write_(cmd_lit, 4)
     rts
     
 // numeric int args: max 16bit in little endian format
@@ -106,6 +110,7 @@ cmd_dump1:  .text "DUM1"        /* DUM1<len> */
 cmd_read:   .text "READ"        
 cmd_mandel: .text "MAND"        /* MAND<16bx8by> */
 cmd_dump2:  .text "DUM2"        /* DUM2<len> */
+cmd_irc:    .text "IRC_"        /* IRC_ */
 cmd_lit:    .fill 4, $00        // here the command is put
 cmd_args:   .fill 256, i        // poke the args here
 cmd_inv:    .text "INVALID COMMAND."

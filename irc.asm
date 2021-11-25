@@ -9,6 +9,7 @@ tlen:       .word $0000
 nick:       .fill 16, $00
 defnick:    .text "POTTENDO> "
             .byte $00
+et:         .text "_quit"
 .label msgbuf  = $9000
 .label buflen = $0800
 .label rcvbuffer = msgbuf + buflen
@@ -55,14 +56,26 @@ inputloop:
     sta inputaddr, x
     rts
 
+out:
+    poke8_(rcvbuffer, 5)
+    memcpy(rcvbuffer+1, et, 5)  // prepare from _quit
+    jsr send_msg                // won't arm NMI after write
+    uport_stop()
+    poke8_(crs, 0)
+    pla                         // stop IRC to main loop
+    pla
+    rts
+    
 store_input:
     ldx crs
+    beq out                     // exit IRC by empty line
     stx rcvbuffer
 !:  lda inputaddr,x
     sta rcvbuffer + 1, x 
     dex
     bpl !-
     jsr send_msg
+    jsr parport.arm_msgcnt
     memcpy_d(rcvbuffer + 10, rcvbuffer, 80)
     memcpy(rcvbuffer + 1, nick, 10)
     lda rcvbuffer
@@ -161,7 +174,6 @@ send_msg:
     dey
     bne !-
     uport_write(cmd_args, tlen)
-    jsr parport.arm_msgcnt
     rts
 }
 
