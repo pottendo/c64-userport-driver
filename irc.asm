@@ -6,6 +6,9 @@ seperator:  .text "----------------------------------------"
 .label inputaddr = $0400 + 23*40
 crs:        .byte $00
 tlen:       .word $0000
+nick:       .fill 16, $00
+defnick:    .text "POTTENDO> "
+            .byte $00
 .label msgbuf  = $9000
 .label buflen = $0800
 .label rcvbuffer = msgbuf + buflen
@@ -21,6 +24,7 @@ setup:
     wstring(0, 22, seperator)
     poke8_(crs, 0)
     memset(inputaddr, ' ', 80)
+    memcpy(nick, defnick, 10)
     lda #$0e 
     jsr STD.BSOUT
     set_cursor(0, 23)
@@ -59,6 +63,13 @@ store_input:
     dex
     bpl !-
     jsr send_msg
+    memcpy_d(rcvbuffer + 10, rcvbuffer, 80)
+    memcpy(rcvbuffer + 1, nick, 10)
+    lda rcvbuffer
+    clc
+    adc #10
+    sta rcvbuffer
+    jsr cpy2msgbuf
     rts
 
 rcv_msgs:
@@ -150,7 +161,7 @@ send_msg:
     dey
     bne !-
     uport_write(cmd_args, tlen)
-    inc VIC.BoC
+    jsr parport.arm_msgcnt
     rts
 }
 
