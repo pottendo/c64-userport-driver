@@ -7,9 +7,9 @@ seperator:  .text "----------------------------------------"
 crs:        .byte $00
 tlen:       .word $0000
 nick:       .fill 16, $00
-defnick:    .text "POTTENDO> "
+defnick:    .text "pottendo> "
             .byte $00
-et:         .text "_quit"
+et:         .text "*qui*"
 .label msgbuf  = $9000
 .label buflen = $0800
 .label rcvbuffer = msgbuf + buflen
@@ -167,6 +167,7 @@ send_msg:
     sty tlen
     lda #$00
     sta tlen + 1        // highbyte of len to be sent alway 0 as input < 80 chars
+    lda #$a0            // end-marker $a0, as 0 is char '@' in screencode
     sta rcvbuffer, y
 !:  
     lda rcvbuffer, y
