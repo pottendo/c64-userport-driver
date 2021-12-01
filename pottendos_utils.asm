@@ -50,6 +50,7 @@
     .label RASTER = base + $12
     .label SprEnable = base + $15
     .label CR2 = base + $16
+    .label VideoAdr = base + $18
     .label SprExpY = base + $17
     .label SprExpX = base + $1D
     .label BoC = base + $20

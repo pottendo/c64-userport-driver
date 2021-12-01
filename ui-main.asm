@@ -2,11 +2,15 @@
 .filenamespace main_
 
 BasicUpstart2(main_entry)
+#define TEST_IRC
+#define EXT80COLS
 
 #import "globals.asm"
 #import "pottendos_utils.asm"
 #import "cmds.asm"
 #import "irc.asm"
+#import "soft80_conio.s"
+
 
 // .segment _main
 main_entry:
@@ -139,7 +143,9 @@ cmdterminal:
     rts
     
 cmdirc:
+#if !TEST_IRC
     jsr irc_
+#endif
     jsr irc.setup
     rts
 cmd9:
