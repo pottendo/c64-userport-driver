@@ -31,10 +31,18 @@
 {
         pha
         ldy #x
-        ldx #y
+        tya
+        and #%00000001
+        beq !+
+        dey                     // align X-coord
+!:      ldx #y
         clc
-        jsr soft80_kplot
-        pla
+        jsr soft80_kplot        // set with aligned X
+        lda #x
+        and #%00000001
+        beq !+
+        jsr adv_cur             // not aligned X, so advance by 1
+!:      pla
 }
 
 // x, y coordinate addr
@@ -42,21 +50,44 @@
 {
         pha
         ldy x
-        ldx y
+        tya
+        and #%00000001
+        beq !+
+        dey                     // align X-coord
+!:      ldx y
         clc
-        jsr soft80_kplot
-        pla
+        jsr soft80_kplot        // set with aligned X
+        lda x
+        and #%00000001
+        beq !+
+        jsr adv_cur             // not aligned X, so advance by 1
+!:      pla
 }
 
 .macro soft80_delc()
 {
+        pha
         sec
         jsr soft80_kplot        // get x, y
         dey                     // dec X-coordinate
-        clc
-        jsr soft80_kplot
+        sty P.zpp1
+        stx P.zpp2
+        soft80_pos(P.zpp1, P.zpp2)
         lda #' '
-        jsr soft80_putchar
+        jsr soft80_putchar      // without advancing cursor
+        pla
+}
+
+.macro soft80_wstring(x, y, addr)
+{
+        soft80_pos_(x, y)
+        ldy #$00
+!loop:  lda addr, y
+        beq !+
+        jsr soft80_cputc
+        iny
+        jmp !loop-
+!:
 }
 
 soft80_crlf:
@@ -117,6 +148,7 @@ soft80_cputdirect:
         jsr     soft80_putchar  // Write the character to the screen
 
         // Advance cursor position
+adv_cur:
         iny                     // contains CURS_X
         cpy     #charsperline
         beq     !L3+

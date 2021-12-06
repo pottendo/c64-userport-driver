@@ -8,6 +8,7 @@
 toggle_screen:
     lda cmd_args
     beq !+
+    poke8_(VIC.BgC, BLACK)
     sprite(0, "on", -1)
     sprite(7, "on", -1)
     init_screen(49, 153, noop, noop)
@@ -18,6 +19,7 @@ toggle_screen:
     sprite(0, "off", -1)
     sprite(7, "off", -1)
     jsr screen.rest
+    poke8_(VIC.BgC, BLUE)
     rts
 
 noop:

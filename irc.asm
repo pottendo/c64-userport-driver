@@ -1,18 +1,24 @@
 #import "pottendos_utils.asm"
 
 .namespace irc {
-seperator:  .text "----------------------------------------"
-            .byte $00
 crs:        .byte $00
+inputrow:   .byte 23
 tlen:       .word $0000
 nick:       .fill 16, $00
 #if EXT80COLS
-defnick:    .text "POTTENDO> "
-#else
+.encoding "petscii_mixed"
 defnick:    .text "pottendo> "
-#endif
+seperator:  .text "-----------------------------------------------------------------> pottendos IRC"
             .byte $00
 et:         .text "*qui*"
+.encoding "screencode_mixed"
+#else
+seperator:  .text "----------------------------------------"
+            .byte $00
+defnick:    .text "pottendo> "
+et:         .text "*qui*"
+#endif
+            .byte $00
 _t:         .byte $00
 .label msgbuf  = $9000
 .label buflen = $0800
@@ -39,6 +45,7 @@ setup:
     set_cursor(0, 23)
 #else    
     jsr soft80.soft80_init
+    soft80_wstring(0, 22, seperator)
     soft80_pos_(0, 23)
 #endif
     jsr inputloop
@@ -54,38 +61,42 @@ inputloop:
     beq inputloop
     cmp #13
     bne !+
-    jsr store_input
-    clear_row(23)
-    poke8_(crs, 0)
-    //memset(inputaddr, ' ', 80)
+st: jsr store_input
 #if !EXT80COLS
     set_cursor(0, 23)
+#else
+    clear_row(23)
+    poke8_(crs, 0)
 #endif
     jmp inputloop
-    rts
+
+    // process individual char
 !:
 #if !EXT80COLS
     //jsr STD.BSOUT     // BSOUT conflicts with ZP addresses of Soft80
 #endif
-    // need to handle BS XXX
+    cmp #$14            // handle BS
+    bne !+
+    soft80_delc()
+    ldx crs
+    beq inputloop
+    dec crs
+    jmp inputloop
+!:
     ldx crs
     sta inputaddr,x
     save_regs()
-    ldy #23
-    sty _t
-_d:
-    soft80_putcxy(crs, _t)
-    //jsr soft80_cputc
+    soft80_putcxy(crs, inputrow)
     restore_regs()
     inc crs
     ldx crs
-    cpx #(40+38)
+    cpx #(40+30)
     beq !+
     jmp inputloop
 !:
-    lda #0
-    sta inputaddr, x
-    rts
+    //lda #0
+    //sta inputaddr, x
+    jmp st
 
 out:
     poke8_(rcvbuffer, 5)
@@ -182,20 +193,25 @@ update_dsp:
     clear_row(17)
     ldy #$00
     lda (currptr), y
-    tay
+    sta P.zpp1      // store length
+    iny             // skip length byte
 !:  lda (currptr), y
 #if !EXT80COLS
 p1: sta newentrypos - 1, y  // modified operand dep. 1 or 2 lines
-#endif
-    dey
-    save_regs()
+#else
+    sty P.zpp2
     jsr soft80_cputc
-    restore_regs()
-    cpy #$00
+    ldy P.zpp2
+#endif
+    iny
+    cpy P.zpp1
     bne !-
-    lda (currptr), y        // length
+    lda (currptr), y    // last char - XXX not managed for 40cols
+    jsr soft80_cputc
+
+    lda P.zpp1          // get length again
     clc
-    adc #$01                // byte for len
+    adc #$01            // add one byte to store length
     clc 
     adc currptr
     sta currptr

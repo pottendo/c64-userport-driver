@@ -2,7 +2,7 @@
 .filenamespace main_
 
 BasicUpstart2(main_entry)
-#define TEST_IRC
+//#define TEST_IRC
 #define EXT80COLS
 
 #import "globals.asm"
@@ -10,7 +10,6 @@ BasicUpstart2(main_entry)
 #import "cmds.asm"
 #import "irc.asm"
 #import "soft80_conio.s"
-
 
 // .segment _main
 main_entry:
@@ -216,7 +215,6 @@ fire:
     beq shipit 
     rts 
 shipit:
-    inc VIC.BoC
     lda #$02
     sta selstate
     jsr cmd6
