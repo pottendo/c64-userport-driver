@@ -20,13 +20,6 @@ main_entry:
     //memset($d800, $98, $200)
     //poke8_(VIC.BgC, 0)
 
-    // enable SP2 as another digital output
-    poke16_(CIA2.TIA, $0001)        // load timer to enable shift
-    // clearbits(CIA2.CRA, %10101110)  // doesn't work, need to set full reg to 0; see next line
-    poke8_(CIA2.CRA, 0)             // needed that this works?!
-    setbits(CIA2.CRA, %01010001)    // shift->send, force load and enable timer in continous mode
-    poke8_(CIA2.SDR, $ff)           // send %11111111, to start output
-
     show_screen(1, str.screen1)
     jsr loopmenu
 exit:
@@ -157,10 +150,10 @@ lastcmd:
 
 prep_sprites:
     memcpy(gl.vic_base + $2000, sprites.start, sprites.end - sprites.start) // move sprite data to matching vic address
-    sprite_sel_(0, 0)
-    sprite_sel_(7, 1)
-    sprite(0, "color", LIGHT_BLUE)
-    sprite(7, "color", LIGHT_RED)
+    sprite_sel_(gl.vic_videoram, $2000, 0, 0)
+    sprite_sel_(gl.vic_videoram, $2000, 7, 1)
+    sprite(0, "color", WHITE)
+    sprite(7, "color", WHITE)
     sprite(0, "expx", "on")
     sprite(0, "expy", "on")
     sprite(7, "expx", "on")

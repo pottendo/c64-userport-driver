@@ -43,8 +43,10 @@ setup:
     jsr STD.BSOUT
     wstring(0, 22, seperator)
     set_cursor(0, 23)
-#else    
+#else
     jsr soft80.soft80_init
+    jsr setup_sprites
+    soft80_doio(setup_sprites2)
     soft80_wstring(0, 22, seperator)
     soft80_pos_(0, 23)
 #endif
@@ -52,7 +54,24 @@ setup:
     jsr soft80.soft80_shutdown
     jmp main_.cmd4
     rts
-    
+
+setup_sprites:
+    memcpy($c800, parport.sprstart, parport.sprend - parport.sprstart) // move sprite data to matching vic address
+    sprite(1, "color_", LIGHT_GREEN)
+    sprite(2, "color_", LIGHT_RED)
+    sprite_pos_(1, 324, 50)
+    sprite_pos_(2, 324, 50)
+    rts
+
+setup_sprites2:
+    sprite_sel_(soft80_vram, $0800, 1, 0)
+    sprite_sel_(soft80_vram, $0800, 2, 1)
+    rts
+
+reset_sprites:
+    jsr parport.init
+    rts
+
 inputloop:
 #if !TEST_IRC
     jsr rcv_msgs
@@ -106,6 +125,7 @@ out:
     uport_stop()
 #endif
     poke8_(crs, 0)
+    jsr reset_sprites
     pla                         // stop IRC to main loop
     pla
     rts

@@ -67,22 +67,6 @@
     jsr parport.write_buffer
 }
 
-.macro setup_write()
-{
-    uport_stop()                    // ensure that NMIs are not handled
-    poke8_(CIA2.SDR, 0)             // line -> low to tell C64 wants to write
-    poke8_(CIA2.DIRB, $ff)          // direction bits 1 -> output
-    setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
-    setbits(CIA2.PORTA, %00000100)  // set PA2 to high
-}
-
-.macro close_write()
-{
-    clearbits(CIA2.PORTA, %11111011) // set PA2 low
-    poke8_(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
-    poke8_(CIA2.SDR, $ff)            // send %11111111, to tell C64 finished writing
-}
-
 // write byte from acc to parport
 .macro out_byte() {
     pha
@@ -109,10 +93,32 @@ pinput_pending: .byte $00       // #of msg the esp would like to send, inc'ed by
 init:
     poke8_(read_pending, 0)
     sta pinput_pending          // acc still 0
+
+    // enable SP2 as another digital output
+    poke16_(CIA2.TIA, $0001)        // load timer to enable shift
+    // clearbits(CIA2.CRA, %10101110)  // doesn't work, need to set full reg to 0; see next line
+    poke8_(CIA2.CRA, 0)             // needed that this works?!
+    setbits(CIA2.CRA, %01010001)    // shift->send, force load and enable timer in continous mode
+    poke8_(CIA2.SDR, $ff)           // send %11111111, to start output
+
+    //sprite setup for IRC VIC config
+    sprite_sel_($0400, $0340, 1, 0)
+    sprite_sel_($0400, $0340, 2, 1)
+    sprite(1, "color_", LIGHT_GREEN)
+    sprite(2, "color_", LIGHT_RED)
+    memcpy($0340, sprstart, sprend - sprstart) // move sprite data to matching vic address
+    sprite_pos_(1, 324, 50)
+    sprite_pos_(2, 324, 50)
+    poke16_(rin+1, rindon)
+    poke16_(rif+1, rindoff)
+    poke16_(win+1, windon)
+    poke16_(wif+1, windoff)
     rts
     
 // Interrupt driven read, finished when read_pending == 1
 start_isr:
+rin:
+    jsr $beef                        // operand modified
     poke8_(CIA2.ICR, $7f)            // stop all interrupts
     poke16_(STD.NMI_VEC, flag_isr)   // reroute NMI
     poke8_(CIA2.SDR, $ff)            // Signal C64 is in read-mode (safe for CIA)
@@ -129,6 +135,8 @@ stop_isr:
     poke16_(STD.NMI_VEC, STD.NMI)    // reroute NMI
     poke8_(CIA2.DIRB, $00)           // direction bits 0 -> input
     poke8_(CIA2.ICR, $80)            // enable interrupts    
+rif:
+    jsr $beef                        // operand modified
     rts
     
 flag_isr:
@@ -204,6 +212,25 @@ next:
     poke8_(read_pending, 0);
     rts
 
+setup_write:
+    uport_stop()                    // ensure that NMIs are not handled
+win:    
+    jsr $beef                       // operand modified, show W
+    poke8_(CIA2.SDR, 0)             // line -> low to tell C64 wants to write
+    poke8_(CIA2.DIRB, $ff)          // direction bits 1 -> output
+    setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
+    setbits(CIA2.PORTA, %00000100)  // set PA2 to high
+    rts
+
+close_write:
+    clearbits(CIA2.PORTA, %11111011) // set PA2 low
+    poke8_(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
+    poke8_(CIA2.SDR, $ff)            // send %11111111, to tell C64 finished writing
+wif:
+    jsr $beef                       // operand modified
+    rts
+
+
 write_buffer:
     // sanity check for len == 0
     lda len + 1
@@ -212,7 +239,7 @@ write_buffer:
     bne cont
     rts
 cont:
-    setup_write()
+    jsr setup_write
 loop:    
     ldy #$00
     lda (buffer), y
@@ -228,15 +255,15 @@ loop:
     dec len + 1
     jmp loop
 done:
-    close_write()
+    jsr close_write
     rts
 
 write_byte:
     pha
-    setup_write()
+    jsr setup_write
     pla
     out_byte()
-    close_write()
+    jsr close_write
     rts
 
 arm_msgcnt:
@@ -256,6 +283,26 @@ msg_cnt:
 !:  inc pinput_pending
     restore_regs()
     rti
+
+rindon:
+    sprite(1, "on", -1)
+    rts
+
+rindoff:
+    sprite(1, "off", -1)
+    rts
+
+windon:
+    sprite(2, "on", -1)
+    rts
+
+windoff:
+    sprite(2, "off", -1)
+    rts
+
+sprstart:
+#import "drv-sprites.asm"
+sprend:
 }
 
     

@@ -7264,7 +7264,7 @@ bpsspd .byte 44,1,176,4,96,9,192,18,128,37,0,75,0,150;new rates
 ;---- pottendo parallelport modem
 
 pottendosetup
-        jmp ($6500)
+        jmp ($6700)
 
 ;----NEW RS232 Userport 300-2400 taken from Novaterm 9.6
 ;----cause everything else sucked

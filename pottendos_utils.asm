@@ -507,10 +507,16 @@ rep:
         and VIC.SprEnable
         sta VIC.SprEnable
     }
-    .if (a == "color")
+    .if (a == "color_")
     {
         ldx #sprno
         lda #b
+        sta VIC.SprColBase, x
+    }
+    .if (a == "color")
+    {
+        ldx #sprno
+        lda b
         sta VIC.SprColBase, x
     }
     .if (a == "expx")
@@ -584,16 +590,16 @@ clhb:
     }
 }
 
-.macro sprite_sel_(sprno, sprptr)
+.macro sprite_sel_(vram, sprbase, sprno, sprptr)
 {
-    lda #(($2000 + sprptr * 64) / 64)
-    sta gl.vic_videoram + $3f8 + sprno
+    lda #((sprbase + sprptr * 64) / 64)
+    sta vram + $3f8 + sprno
 }
 
 // select sprite from acc
-.macro sprite_sel_acc(sprno)
+.macro sprite_sel_acc(vram, sprno)
 {
-    sta gl.vic_videoram + $3f8 + sprno
+    sta vram + $3f8 + sprno
 }
 
 .macro on_joy(a, fn)

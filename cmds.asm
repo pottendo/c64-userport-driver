@@ -55,8 +55,10 @@ echo:
     jmp !l-
 !:  inx             // send also the '0' char
     stx parport.len
+    stx cmd_tmp
     poke16_(parport.buffer, cmd_lit)
     jsr parport.write_buffer
+    ldx cmd_tmp
     dex             // 4 chars command + '0'
     dex
     dex
@@ -68,7 +70,6 @@ echo:
     ldx #0
     stx cmd_args + 1
     jsr do_rcv
-    print(gl.dest_mem)
     rts
 dump1:
     lda #$02
@@ -104,6 +105,7 @@ irc_:
 // numeric int args: max 16bit in little endian format
 // string args: '0' as terminator
 // commands must have exactly 4 chars
+cmd_tmp:    .byte $00
 cmd:        .byte $00           // poke the cmd nr. here
 cmd_start:
 cmd_init:   .text "INIT"        /* INIT<1|0> gfx on or off */

@@ -180,7 +180,7 @@ soft80_scroll:
 
         // pixel ram
         ldx #$a0
-!loop:  .for (var base = $dfff; base < ($dfff + (17*320)); base += 320) {
+!loop:  .for (var base = (soft80_bitmap - 1); base < ((soft80_bitmap - 1) + (17*320)); base += 320) {
                 lda (base + 320), x             // left half
                 sta (base + 0), x
                 lda (base + 320 + $a0), x       // right half
@@ -193,7 +193,7 @@ soft80_scroll:
         // now color ram
         ldx #40
 !cloop:
-        .for (var cbase = $d7ff; cbase < ($d7ff + (17 * 40)); cbase += 40) {
+        .for (var cbase = (soft80_colram - 1); cbase < ((soft80_colram - 1) + (17 * 40)); cbase += 40) {
                 lda (cbase + 40), x
                 sta (cbase + 0), x
         }
@@ -281,14 +281,28 @@ soft80_first_init:
 
 .macro clear_row(r)
 {
-        .var a1_ = $dfff + r * 320
+        .var a1_ = (soft80_bitmap -1) + r * 320
         .var a2_ = a1_ + 160
         poke16_(soft80.a1+1, a1_)
         poke16_(soft80.a2+1, a2_)
-        .var c1_ = $d7ff + r * 40
+        .var c1_ = (soft80_colram - 1) + r * 40
         .var c2_ = c1_ + 20
         poke16_(soft80.c1+1, c1_)
         poke16_(soft80.c2+1, c2_)
         jsr soft80.clear_row_
+}
+
+// call function with RAM visible - e.g. to set Sprite pointers after vram
+.macro soft80_doio(fn)
+{
+        sei
+        lda     $01
+        pha
+        lda     #$34
+        sta     $01
+        jsr fn 
+        pla
+        sta     $01
+        cli
 }
 
