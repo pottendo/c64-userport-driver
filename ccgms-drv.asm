@@ -11,10 +11,11 @@
 .pc=$6700       // to be consistent with 'pottendosetup' line ~7267 in ccgms-2021.asm
 
 .word pottendo_setup
-.word pottendo_out
-.word pottendo_in
+pottendo_init: .byte $00    // flag to avoid double init
 
 pottendo_setup:
+    lda pottendo_init
+    bne !+
     jsr parport.init
     poke16_($326, pottendo_out)
     poke16_($32a, pottendo_in)
@@ -24,6 +25,8 @@ pottendo_setup:
     poke16_(parport.rt3 + 1, ccgms.rtail)
     poke16_(parport.rt4 + 1, ccgms.rhead)
     uport_lread(ccgms.ribuf)                    // activate background read
+    inc pottendo_init
+!:
     rts
 
 pottendo_out:

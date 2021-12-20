@@ -19,7 +19,8 @@ defnick:    .text "pottendo> "
 et:         .text "*qui*"
 #endif
             .byte $00
-_t:         .byte $00
+_t1:        .byte $00
+_t2:        .byte $00
 .label msgbuf  = $9000
 .label buflen = $0800
 .label rcvbuffer = msgbuf + buflen
@@ -159,7 +160,12 @@ rcv_msgs:
 !:
     poke8_(rcvbuffer + 1, 0)                // high byte 0, to support 16 bit len in addr - ugly misuse but efficient
     uport_read_(rcvbuffer, 1)
-    uport_read(rcvbuffer + 1, rcvbuffer)    // len is stored here
+    lda rcvbuffer
+    cmp #81                 
+    bcc !+                  // larger tan 80
+    poke8_(rcvbuffer, 80)   // truncate to 80
+    inc VIC.BoC
+!:  uport_read(rcvbuffer + 1, rcvbuffer)    // len is stored here
     dec parport.pinput_pending
     jsr parport.arm_msgcnt
 #endif
@@ -213,27 +219,22 @@ update_dsp:
     clear_row(17)
     ldy #$00
     lda (currptr), y
-    sta P.zpp1      // store length
-    iny             // skip length byte
-!:  lda (currptr), y
+    sta _t1     // store length 
+!:  iny         // skip length byte
+    lda (currptr), y  // min one char (len 0 must be handled elsewhere)
 #if !EXT80COLS
 p1: sta newentrypos - 1, y  // modified operand dep. 1 or 2 lines
 #else
-    sty P.zpp2
+    sty _t2
     jsr soft80_cputc
-    ldy P.zpp2
+    ldy _t2
 #endif
-    iny
-    cpy P.zpp1
+    cpy _t1     
     bne !-
-    lda (currptr), y    // last char - XXX not managed for 40cols
-    jsr soft80_cputc
-
-    lda P.zpp1          // get length again
-    clc
-    adc #$01            // add one byte to store length
+    inc _t1     // +1 to correct len to cover len byte
+    lda _t1     // get length again 
     clc 
-    adc currptr
+    adc currptr // mov curr ptr accordingly
     sta currptr
     lda #$00
     adc currptr + 1

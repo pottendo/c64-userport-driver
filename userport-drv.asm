@@ -23,9 +23,9 @@
     sta parport.len + 1
 
     lda #(parport.nread - parport.jm - 2)
-    sta parport.jm + 1  // modify operand of ISR branch
+    sta parport.jm + 1          // modify operand of ISR branch
     jsr parport.start_isr
-    lda parport.read_pending            // busy wait until read is completed
+    lda parport.read_pending    // busy wait until read is completed
     bne *-3
 }
 // dest: addr, len: addr
@@ -34,9 +34,9 @@
     adc16(len, dest, parport.len)
     poke16_(parport.buffer, dest)   
     lda #(parport.nread - parport.jm - 2)
-    sta parport.jm + 1      // modify operand of ISR branch to
-    jsr parport.start_isr   // launch interrupt driven read
-    lda parport.read_pending            // busy wait until read is completed
+    sta parport.jm + 1          // modify operand of ISR branch to
+    jsr parport.start_isr       // launch interrupt driven read
+    lda parport.read_pending    // busy wait until read is completed
     bne *-3
 }
 
@@ -166,6 +166,7 @@ out:
     rti
 
 loopread:
+    jsr rindon
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy receiving
     lda CIA2.PORTB  // read chr from the parallel port B
 rt1:ldy rtail       // operand potentially modified to point to ccgms
@@ -174,13 +175,18 @@ rt3:inc rtail       // operand potentially modified to point to ccgms
     tya 
     sec
 rt4:sbc $beef       // modified to point to ccgms
+    php
+    jsr rindoff
+    plp
     cmp #227
     bcc out         // enough room in buffer
     clearbits(CIA2.PORTA, %11111011) // clear PA2 to low to acknowledge last byte
     setbits(CIA2.PORTA, %00000100)   // set PA2 to high to signal we're busy -> FlowControl
     poke8_(VIC.BoC, RED)             // show wer're blocking
-    restore_regs()
-    rti
+    jmp rif
+    //jsr rindoff
+    //restore_regs()
+    //rti
 
 sync_read:
     poke8_(read_pending, 0)
