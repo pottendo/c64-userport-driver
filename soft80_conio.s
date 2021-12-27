@@ -10,8 +10,9 @@ BasicUpstart2(soft80.start_)
 #endif
 CHARCOLOR:      .byte $01
 VIC_BG_COLOR0:  .byte $06
-soft80_internal_bgcolor:        .byte $00
-soft80_internal_cellcolor:      .byte $00
+VIC_CLEARCOL:   .byte $66 // set to ((VIC_BG_COLOR0 << 4) | VIC_BG_COLOR0)
+soft80_internal_bgcolor:        .byte $00 
+soft80_internal_cellcolor:      .byte $00       
 soft80_internal_cursorxlsb:     .byte $00
 
 .namespace soft80 {
@@ -77,22 +78,23 @@ skp:
         ora     CHARCOLOR
         sta     soft80_internal_cellcolor
 
-        lda     #$3B
+        lda     #$3B            // Bitmap, Screen On, 25line, y-scroll by 3pix
         sta     VIC.CR1         // VIC_CTRL1
-        //lda     #$00
-        //sta     CIA2.PORTA      // CIA2_PRA
+//        lda     #$00
+//        sta     CIA2.PORTA      // CIA2_PRA
         clearbits(CIA2.PORTA, %11111100)
-        lda     #$68
+        lda     #$68            // VideoRam->base + $1800, charset 4*2048
         sta     VIC.VideoAdr    // VIC_VIDEO_ADR
-        lda     #$C8
+        lda     #$08            // Bitmap, 40 chars, x-scroll 0
         sta     VIC.CR2         // VIC_CTRL2
 
         jmp     soft80_kclrscr
 
 soft80_shutdown:
 
-        lda     #$07
-        sta     CIA2.PORTA       // CIA2_PRA
+        //lda     #$03            // VIC -> Bank0 (0-16k)
+        //sta     CIA2.PORTA      // CIA2_PRA
+        setbits(CIA2.PORTA, %00000011)
         jmp     $FF5B           // Initialize video I/O
 
 firstinit:
@@ -217,6 +219,7 @@ a2:     sta $beef, x
         bne a1
         // colram
         ldx #20
+        lda VIC_CLEARCOL
 c1:     sta $beef, x
 c2:     sta $beef, x
         dex

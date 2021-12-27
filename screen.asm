@@ -5,7 +5,7 @@
     poke16_(screen.cb_rf + 1, rest_fun)  // modify operand
     poke8_(screen.line2, l2)
     poke8_(screen.line1, l1)
-    jsr screen.init_raster
+    //jsr screen.init_raster
 }
 
 .macro close_screen() {
@@ -55,7 +55,6 @@ cb_rf:
 tmp1: .byte $00
 /* callbacks to set vic mode */
 mode: 
-    setbits(CIA2.DIRA, %00000011)
     clearbits(CIA2.base, %11111100) // select VIC bank $4000-$7FFF
     setbits(CIA2.base, %00000010)
     lda VIC.MEM                     // move VIC screen to base + $0000
@@ -66,10 +65,16 @@ mode:
     setbits(VIC.CR1, %00100000)     // bit 5 -> HiRes
     setbits(VIC.CR2, %00010000)     // bit 4 -> MC
     poke8_(VIC.BoC, 0)
+    sprite(0, "color", WHITE)
+    sprite(7, "color", WHITE)
+    sprite(0, "expx", "on")
+    sprite(0, "expy", "on")
+    sprite(7, "expx", "on")
+    sprite(7, "expy", "on")
+
     rts
 rest: 
     poke8_(VIC.BoC, 14)
-    clearbits(CIA2.DIRA, %11111100)
     setbits(CIA2.base, %00000011)
     lda tmp1        
     //and #%11110000

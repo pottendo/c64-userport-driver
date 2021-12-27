@@ -536,7 +536,6 @@ remcolor:
         inc     $01             // $35
         sta     (CRAM_PTR),y    // colram
         stx     $01             // $34
-
         rts
 
 !sk2:

@@ -11,7 +11,7 @@ toggle_screen:
     poke8_(VIC.BgC, BLACK)
     sprite(0, "on", -1)
     sprite(7, "on", -1)
-    init_screen(49, 153, noop, noop)
+    //init_screen(49, 153, noop, noop)
     jsr screen.mode
     rts
 !:  

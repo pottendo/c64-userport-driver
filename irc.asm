@@ -4,10 +4,14 @@
 crs:        .byte $00
 inputrow:   .byte 23
 tlen:       .word $0000
-nick:       .fill 16, $00
+nick:       .byte 255   // color 
+            .fill 16, $00
 #if EXT80COLS
 .encoding "petscii_mixed"
-defnick:    .text "pottendo> "
+defnick:    .byte 254   // revers ib
+            .text "pottendosC64"
+            .byte 254   // revers off
+            .text ">"
 seperator:  .text "-----------------------------------------------------------------> pottendos IRC"
             .byte $00
 et:         .text "*qui*"
@@ -37,7 +41,7 @@ setup:
     poke16_(currptr, msgbuf)
     poke8_(crs, 0)
     memset(inputaddr, ' ', 80)
-    memcpy(nick, defnick, 10)
+    memcpy(nick + 1, defnick, 16)   // +1 as color is fixed as first byte
 #if !EXT80COLS
     jsr STD.CLSCR
     lda #$0e 
@@ -143,11 +147,11 @@ store_input:
     jsr send_msg
     jsr parport.arm_msgcnt
 #endif
-    memcpy_d(rcvbuffer + 10, rcvbuffer, 80)
-    memcpy(rcvbuffer + 1, nick, 10)
+    memcpy_d(rcvbuffer + 16, rcvbuffer, 80)
+    memcpy(rcvbuffer + 1, nick, 16)
     lda rcvbuffer
     clc
-    adc #10
+    adc #16
     sta rcvbuffer
     jsr cpy2msgbuf
     rts
@@ -220,17 +224,40 @@ update_dsp:
     ldy #$00
     lda (currptr), y
     sta _t1     // store length 
-!:  iny         // skip length byte
+!nb:
+    iny         // skip length byte
     lda (currptr), y  // min one char (len 0 must be handled elsewhere)
 #if !EXT80COLS
 p1: sta newentrypos - 1, y  // modified operand dep. 1 or 2 lines
 #else
+    cmp #254
+    bne !+
+    lda RVS 
+    eor #$ff
+    sta RVS 
+    jmp !skp+
+!:
+    .for(var co = 0; co < 4; co++) {
+    cmp #(253 - co)
+    bne !+
+    lda #((6 << 4) | (15 - co))
+    sta soft80_internal_cellcolor
+    jmp !skp+
+!:
+    }
+    cmp #255
+    bne !+
+    lda #((6 << 4) | 1) // white, hardcoded for local user
+    sta soft80_internal_cellcolor
+    jmp !skp+
+!:
     sty _t2
     jsr soft80_cputc
     ldy _t2
+!skp:
 #endif
     cpy _t1     
-    bne !-
+    bne !nb-
     inc _t1     // +1 to correct len to cover len byte
     lda _t1     // get length again 
     clc 

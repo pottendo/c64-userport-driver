@@ -152,12 +152,6 @@ prep_sprites:
     memcpy(gl.vic_base + $2000, sprites.start, sprites.end - sprites.start) // move sprite data to matching vic address
     sprite_sel_(gl.vic_videoram, $2000, 0, 0)
     sprite_sel_(gl.vic_videoram, $2000, 7, 1)
-    sprite(0, "color", WHITE)
-    sprite(7, "color", WHITE)
-    sprite(0, "expx", "on")
-    sprite(0, "expy", "on")
-    sprite(7, "expx", "on")
-    sprite(7, "expy", "on")
     rts
 
 decx:
