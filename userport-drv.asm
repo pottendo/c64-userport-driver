@@ -89,6 +89,7 @@ dest:           .word $0400     // destination address
 read_pending:   .byte $00       // flag if read is on-going
 rtail:          .byte $00
 pinput_pending: .byte $00       // #of msg the esp would like to send, inc'ed by NMI/Flag2
+mem_save:       .byte $00
 
 init:
     poke8_(read_pending, 0)
@@ -141,6 +142,9 @@ rif:
     
 flag_isr:
     save_regs()
+    lda $01
+    sta mem_save
+    poke8_(1, $37)  // std mem
     lda CIA2.ICR
     and #%10000 // FLAG pin interrupt (bit 4)
 jm: bne nread  // modified operand in case of loop read
@@ -162,6 +166,8 @@ nread:
 
 out:
     clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
+    lda mem_save    // restore mem layout
+    sta $01
     restore_regs()
     rti
 
@@ -183,10 +189,10 @@ rt4:sbc $beef       // modified to point to ccgms
     clearbits(CIA2.PORTA, %11111011) // clear PA2 to low to acknowledge last byte
     setbits(CIA2.PORTA, %00000100)   // set PA2 to high to signal we're busy -> FlowControl
     poke8_(VIC.BoC, RED)             // show wer're blocking
-    jmp rif
-    //jsr rindoff
-    //restore_regs()
-    //rti
+    lda mem_save    // restore mem layout
+    sta $01
+    restore_regs()
+    rti
 
 sync_read:
     poke8_(read_pending, 0)

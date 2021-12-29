@@ -213,7 +213,7 @@ cpy2msgbuf:
     lda #(newentrypos - 1)
     sta p1 + 1
 #else
-    jsr soft80.soft80_scroll
+    jsr scroll17
     clear_row(17)
 #endif
     jmp update_dsp
@@ -271,6 +271,10 @@ p1: sta newentrypos - 1, y  // modified operand dep. 1 or 2 lines
     poke16_(currptr, msgbuf)
     //jsr soft80_crlf
 !:
+    rts
+
+scroll17:
+    soft80_scroll(17)
     rts
 
 #if !TEST_IRC

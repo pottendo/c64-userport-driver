@@ -1668,6 +1668,8 @@ mslop2
  jsr chrout
  dex
  bne mslop2
+ lda #$0d       ; XXX80cols
+ jsr chrout
  rts
 instr
  lda #<instxt
@@ -1716,10 +1718,10 @@ msgtxt
 .byte 32,156
 .text " ! "
 .byte 5,32
-.text "    tERMINAL 2021   "
-.byte 00
+.text "    tERMINAL 2021   "   ; XXX80cols: added cr
+.byte $0d, 00
 author  .text "BY cRAIG sMITH mODS BY aLWYZ/POTTENDO"
-.byte 146,151,00
+.byte 146,151,$0d,00           ; XXX80cols: added cr
 ;
 instxt
 .text 5,'  ',18,'f1',146,32,150,'uPLOAD          '

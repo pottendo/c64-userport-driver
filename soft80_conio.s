@@ -21,6 +21,8 @@ tmp2: .byte $00
 tmp3: .byte $00
 tmp4: .byte $00
 
+#if SOFT80STANDALONE
+{
 start_:
         lda #$00
         sta RVS
@@ -34,7 +36,7 @@ entry:
         beq out
         cmp #'-'
         bne !+
-        jsr soft80_scroll
+        jsr scroll17
         pla
         jmp !loop-
 !:      cmp #$14  // backspace
@@ -54,7 +56,13 @@ out:
         pla
         jsr soft80_shutdown
         rts
-        
+
+scroll17:
+    soft80_scroll(17)
+    rts        
+}
+#endif
+
 soft80_init:
         lda     soft80_first_init
         bne     skp
@@ -173,41 +181,6 @@ fill_canvas:
 
         rts
         
-soft80_scroll:
-        sei
-        lda     $01
-        pha
-        lda     #$34
-        sta     $01
-
-        // pixel ram
-        ldx #$a0
-!loop:  .for (var base = (soft80_bitmap - 1); base < ((soft80_bitmap - 1) + (17*320)); base += 320) {
-                lda (base + 320), x             // left half
-                sta (base + 0), x
-                lda (base + 320 + $a0), x       // right half
-                sta (base + $a0), x
-        }
-        dex
-        beq !next+
-        jmp !loop-
-!next:
-        // now color ram
-        ldx #40
-!cloop:
-        .for (var cbase = (soft80_colram - 1); cbase < ((soft80_colram - 1) + (17 * 40)); cbase += 40) {
-                lda (cbase + 40), x
-                sta (cbase + 0), x
-        }
-        dex
-        beq !done+
-        jmp !cloop-
-!done:
-        pla
-        sta $01
-        cli
-        rts
-
 // clear row 
 clear_row_:
         save_regs()
@@ -281,6 +254,43 @@ soft80_first_init:
 #import "soft80_cpeekcolor.s"
 #import "soft80_cpeekrevers.s"
 }
+
+.macro soft80_scroll(lines)
+{
+        sei
+        lda     $01
+        pha
+        lda     #$34
+        sta     $01
+
+        // pixel ram
+        ldx #$a0
+!loop:  .for (var base = (soft80_bitmap - 1); base < ((soft80_bitmap - 1) + (lines*320)); base += 320) {
+                lda (base + 320), x             // left half
+                sta (base + 0), x
+                lda (base + 320 + $a0), x       // right half
+                sta (base + $a0), x
+        }
+        dex
+        beq !next+
+        jmp !loop-
+!next:
+        // now color ram
+        ldx #40
+!cloop:
+        .for (var cbase = (soft80_colram - 1); cbase < ((soft80_colram - 1) + (lines * 40)); cbase += 40) {
+                lda (cbase + 40), x
+                sta (cbase + 0), x
+        }
+        dex
+        beq !done+
+        jmp !cloop-
+!done:
+        pla
+        sta $01
+        cli
+}
+
 
 .macro clear_row(r)
 {

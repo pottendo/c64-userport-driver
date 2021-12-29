@@ -8,8 +8,8 @@ BasicUpstart2(main_entry)
 #import "globals.asm"
 #import "pottendos_utils.asm"
 #import "cmds.asm"
-#import "irc.asm"
 #import "soft80_conio.s"
+#import "irc.asm"
 
 // .segment _main
 main_entry:
