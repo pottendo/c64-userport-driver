@@ -1,5 +1,7 @@
 #import "pottendos_utils.asm"
 
+//#define HANDLE_MEM_BANK      // enable this if kernal or I/O is potentially banked out
+
 // dest: addr, len: scalar
 .macro uport_read_(dest, len) {
     lda #<dest
@@ -89,8 +91,7 @@ dest:           .word $0400     // destination address
 read_pending:   .byte $00       // flag if read is on-going
 rtail:          .byte $00
 pinput_pending: .byte $00       // #of msg the esp would like to send, inc'ed by NMI/Flag2
-mem_save:       .byte $00
-
+_wtmp:          .byte $00
 init:
     poke8_(read_pending, 0)
     sta pinput_pending          // acc still 0
@@ -122,6 +123,9 @@ rin:
     jsr $beef                        // operand modified
     poke8_(CIA2.ICR, $7f)            // stop all interrupts
     poke16_(STD.NMI_VEC, flag_isr)   // reroute NMI
+#if HANDLE_MEM_BANK
+    poke16_($fffa, flag_isr)         // also HW vector, if KERNAL is banked out (e.g. in soft80 mode, credits @groepaz)
+#endif
     poke8_(CIA2.SDR, $ff)            // Signal C64 is in read-mode (safe for CIA)
     poke8_(CIA2.DIRB, $00)           // direction bit 0 -> input
     setbits(CIA2.DIRA, %00000100)    // PortA r/w for PA2
@@ -133,7 +137,10 @@ rin:
 
 stop_isr:
     poke8_(CIA2.ICR, $7f)            // stop all interrupts
-    poke16_(STD.NMI_VEC, STD.NMI)    // reroute NMI
+    poke16_(STD.NMI_VEC, STD.CONTNMI)    // reroute NMI
+#if HANDLE_MEM_BANK
+    poke16_($fffa, STD.NMI_VEC)
+#endif
     poke8_(CIA2.DIRB, $00)           // direction bits 0 -> input
     poke8_(CIA2.ICR, $80)            // enable interrupts    
 rif:
@@ -141,14 +148,32 @@ rif:
     rts
     
 flag_isr:
+    sei
     save_regs()
+#if HANDLE_MEM_BANK
     lda $01
-    sta mem_save
-    poke8_(1, $37)  // std mem
+    pha               // save mem layout
+    poke8_($01, $37)  // std mem layout for I/O access
+#endif
     lda CIA2.ICR
     and #%10000 // FLAG pin interrupt (bit 4)
 jm: bne nread  // modified operand in case of loop read
-    jmp STD.NMI
+#if HANDLE_MEM_BANK
+    ldy CIA2.ICR
+    bmi ws
+    pla             // restore mem layout
+    sta $01
+    restore_regs()
+    rti
+ws:
+    inc VIC.BgC
+    pla
+    sta $01
+    jmp $fe72
+#else
+    jmp STD.CONTNMI
+#endif
+    
     // receive char now
 nread:
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy receiving
@@ -166,14 +191,16 @@ nread:
 
 out:
     clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
-    lda mem_save    // restore mem layout
+#if HANDLE_MEM_BANK
+    pla         // restore mem layout
     sta $01
+#endif
     restore_regs()
     rti
 
 loopread:
-    jsr rindon
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy receiving
+    jsr rindon
     lda CIA2.PORTB  // read chr from the parallel port B
 rt1:ldy rtail       // operand potentially modified to point to ccgms
 rt2:sta gl.dest_mem,y
@@ -186,11 +213,13 @@ rt4:sbc $beef       // modified to point to ccgms
     plp
     cmp #227
     bcc out         // enough room in buffer
+    poke8_(VIC.BoC, RED)             // show wer're blocking
     clearbits(CIA2.PORTA, %11111011) // clear PA2 to low to acknowledge last byte
     setbits(CIA2.PORTA, %00000100)   // set PA2 to high to signal we're busy -> FlowControl
-    poke8_(VIC.BoC, RED)             // show wer're blocking
-    lda mem_save    // restore mem layout
+#if HANDLE_MEM_BANK
+    pla             // restore mem layout
     sta $01
+#endif
     restore_regs()
     rti
 
@@ -271,11 +300,20 @@ done:
     rts
 
 write_byte:
-    pha
+    sta _wtmp       // save char to write
+#if HANDLE_MEM_BANK
+    lda $01
+    pha               // save mem layout
+    poke8_($01, $37)  // std mem layout for I/O access
+#endif
     jsr setup_write
-    pla
+    lda _wtmp
     out_byte()
     jsr close_write
+#if HANDLE_MEM_BANK
+    pla             // restore mem layout
+    sta $01
+#endif
     rts
 
 arm_msgcnt:

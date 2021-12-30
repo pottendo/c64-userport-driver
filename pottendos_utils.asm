@@ -31,7 +31,8 @@
 
 .namespace STD {
     .label IRQ = $ea31
-    .label NMI = $fe56
+    .label NMI = $fe47      // orignal address: $fe47, $fe56
+    .label CONTNMI = $fe56  // jmp after save regs and some CIA1 handling
     .label IRQ_VEC = $314
     .label NMI_VEC = $318
     .label BSOUT = $ffd2

@@ -1,4 +1,5 @@
 #define EXT80COLS
+#define HANDLE_MEM_BANK // must be set to enable proper handling in userport-drv along soft80
 
 /*
 #if EXT80COLS
@@ -61,13 +62,8 @@ pottendo_out:
     cmp #03     // screen
     bne !+
     save_regs()
-    //poke8_(CIA2.ICR, $7f)            // stop all interrupts
-    //jsr parport.stop_isr
     lda _t1
     jsr ext80cols_bsout
-    //lda CIA2.ICR
-    //poke8_(CIA2.ICR, %10010000) 
-    //jsr parport.start_isr
     restore_regs()
     lda _t1     // restor char
     rts
@@ -102,8 +98,8 @@ rsgetxfer:
     sbc ccgms.rtail
     cmp #24
     bcc !+           
-    clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
     poke8_(VIC.BoC, BLACK)
+    clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
 !:  clc
 	pla
 !:	rts
@@ -208,20 +204,17 @@ ext80cols_bsout:
     cmp #$0d    // lf
     bne !+
     jsr soft80_cputc
+    lda #$0a    // cr
+!:
+    pha
     lda CURS_Y
-    cmp #(screenrows + 1)
-    bcc lf
-_d1:
+    cmp #(screenrows)
+    bcc out
     jsr scroll24
     clear_row(24)
     soft80_pos_(0, 24)
-    rts
-lf:
-    lda #$0a    // cr
-    jsr soft80_cputc
-    rts
-!:
 out:              // just output
+    pla
     jsr soft80_cputc
     rts
 
