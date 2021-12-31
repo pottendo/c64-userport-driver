@@ -165,6 +165,11 @@ ext80cols_bsout:
     soft80_pos_(0, 0)
     rts
 !:
+    cmp #20     // del
+    bne !+
+    soft80_delc()
+    rts
+!:
     cmp #157     // crs left
     bne !+
     poke8(_tx, CURS_X)

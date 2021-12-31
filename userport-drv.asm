@@ -163,8 +163,9 @@ jm: bne nread  // modified operand in case of loop read
     bmi ws
     pla             // restore mem layout
     sta $01
-    restore_regs()
-    rti
+    jmp STD.CONTNMI
+//    restore_regs()
+//    rti
 ws:
     inc VIC.BgC
     pla

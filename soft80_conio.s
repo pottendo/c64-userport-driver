@@ -184,20 +184,37 @@ fill_canvas:
 // clear row 
 clear_row_:
         save_regs()
+        sei
+        lda     $01
+        pha
+        lda     #$34
+        sta     $01
+
         ldx #$a0
         lda #$ff
 a1:     sta $beef, x
 a2:     sta $beef, x
         dex
         bne a1
-        // colram
+        
+!dovram:
+        // $01 == $34 -> vram
         ldx #20
         lda VIC_CLEARCOL
 c1:     sta $beef, x
 c2:     sta $beef, x
         dex
         bne c1
+
+        inc $01      // $01 == $35 -> now cram
+        lda $01
+        cmp #$35
+        beq !dovram-
+!:
+        pla
+        sta $01
         restore_regs()
+        cli
         rts
 
 // the following tables take up 267 bytes, used by kplot
@@ -272,10 +289,10 @@ soft80_first_init:
                 sta (base + $a0), x
         }
         dex
-        beq !next+
+        beq !dovram+
         jmp !loop-
-!next:
-        // now color ram
+!dovram:
+        // $01 == $34 -> vram ram
         ldx #40
 !cloop:
         .for (var cbase = (soft80_colram - 1); cbase < ((soft80_colram - 1) + (lines * 40)); cbase += 40) {
@@ -283,9 +300,15 @@ soft80_first_init:
                 sta (cbase + 0), x
         }
         dex
-        beq !done+
+        beq !d+
         jmp !cloop-
-!done:
+!d:
+        inc $01         // $01 == $35 -> cram
+        lda $01
+        cmp #$35
+        bne !+
+        jmp !dovram-
+!:
         pla
         sta $01
         cli
