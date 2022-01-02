@@ -88,22 +88,44 @@ jbgetrs:
 rsgetxfer:
 	ldx ccgms.rhead
     cpx ccgms.rtail
-    beq !++             // skip (empty buffer, return with carry set)
+    beq !empty+             // skip (empty buffer, return with carry set)
     lda ccgms.ribuf,x
 	pha
     inx
     stx ccgms.rhead
+    lda ccgms.rtail
+    sec
+    sbc ccgms.rhead
+/*  orig code, wrong IMHO
     txa
     sec
     sbc ccgms.rtail
+*/
     cmp #24
-    bcc !+           
-    poke8_(VIC.BoC, BLACK)
+    bcc !+  
+    clc 
+    pla
+!empty:
+    rts
+!:
+#if HANDLE_MEM_BANK
+        sei
+        lda     $01
+        pha
+        lda     #$37
+        sta     $01          
+#endif
+    //poke8_(VIC.BoC, BLACK)
     clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
-!:  clc
+#if HANDLE_MEM_BANK
+        pla
+        sta $01
+        cli
+#endif
+    clc
 	pla
-!:	rts
-
+    rts
+    
 #if EXT80COLS
 #import "soft80_conio.s"
 
@@ -131,8 +153,9 @@ ext80cols_init:
 }
 .macro map_ignores()
 {
-    .var ignlist = List().add(8, 14, 15, 16)
-    .for (var i = 0; i < 4; i++)
+    .var ignlist = List().add(2, 3, 8, 14, 15, 16, $82, $8e, $8f)
+    .var l = ignlist.size()
+    .for (var i = 0; i < l; i++)
     {
         cmp #(ignlist.get(i))
         bne !+
@@ -142,22 +165,30 @@ ext80cols_init:
 }
 
 ext80cols_bsout:
+    cmp #7     // bell
+    bne !+
+    jsr ccgms.bell
+    rts
+!:
+    cmp #17     // crs down
+    bne !+
+    poke8(_ty, CURS_Y)
+    // acc has CURS_Y
+    cmp #(screenrows - 1)
+    bne move_crs 
+    jsr scroll24
+    jsr clear_row24
+    rts
+move_crs:
+    poke8(_tx, CURS_X)
+    inc _ty
+    soft80_pos(_tx, _ty)
+    rts
+!:
     cmp #18     // revers on
     bne !+
     lda #1
     sta RVS
-    rts
-!:
-    cmp #146     // revers on
-    bne !+
-    lda #0
-    sta RVS
-    rts
-!:
-    cmp #147     // clear screen
-    bne !+
-    jsr soft80_kclrscr
-    soft80_pos_(0, 0)
     rts
 !:
     cmp #19     // home
@@ -194,12 +225,16 @@ ext80cols_bsout:
     soft80_pos(_tx, _ty)
     rts
 !:
-    cmp #17     // crs down
+    cmp #146     // revers on
     bne !+
-    poke8(_tx, CURS_X)
-    poke8(_ty, CURS_Y)
-    inc _ty
-    soft80_pos(_tx, _ty)
+    lda #0
+    sta RVS
+    rts
+!:
+    cmp #147     // clear screen
+    bne !+
+    jsr soft80_kclrscr
+    soft80_pos_(0, 0)
     rts
 !:
     map_ignores()
@@ -209,6 +244,8 @@ ext80cols_bsout:
     cmp #$0d    // lf
     bne !+
     jsr soft80_cputc
+    lda #0
+    sta RVS
     lda #$0a    // cr
 !:
     pha
@@ -216,15 +253,19 @@ ext80cols_bsout:
     cmp #(screenrows)
     bcc out
     jsr scroll24
-    clear_row(24)
+    jsr clear_row24
     soft80_pos_(0, 24)
 out:              // just output
     pla
     jsr soft80_cputc
     rts
 
+// expand macros only once
 scroll24:
     soft80_scroll(24)
+    rts
+clear_row24:
+    clear_row(24)
     rts
 #endif
 }

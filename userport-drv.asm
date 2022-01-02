@@ -159,18 +159,11 @@ flag_isr:
     and #%10000 // FLAG pin interrupt (bit 4)
 jm: bne nread  // modified operand in case of loop read
 #if HANDLE_MEM_BANK
-    ldy CIA2.ICR
-    bmi ws
     pla             // restore mem layout
     sta $01
     jmp STD.CONTNMI
 //    restore_regs()
 //    rti
-ws:
-    inc VIC.BgC
-    pla
-    sta $01
-    jmp $fe72
 #else
     jmp STD.CONTNMI
 #endif
@@ -209,14 +202,15 @@ rt3:inc rtail       // operand potentially modified to point to ccgms
     tya 
     sec
 rt4:sbc $beef       // modified to point to ccgms
+    cmp #227         // 227
     php
     jsr rindoff
     plp
-    cmp #227
     bcc out         // enough room in buffer
-    poke8_(VIC.BoC, RED)             // show wer're blocking
+    //poke8_(VIC.BoC, RED)             // show wer're blocking
     clearbits(CIA2.PORTA, %11111011) // clear PA2 to low to acknowledge last byte
-    setbits(CIA2.PORTA, %00000100)   // set PA2 to high to signal we're busy -> FlowControl
+    ora #%00000100
+    sta CIA2.PORTA                   // set PA2 to high to signal we're busy -> FlowControl
 #if HANDLE_MEM_BANK
     pla             // restore mem layout
     sta $01
