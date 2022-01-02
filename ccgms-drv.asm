@@ -135,6 +135,20 @@ ext80cols_init:
     poke8_(VIC_CLEARCOL, 0)
     jsr soft80.soft80_init
     soft80_pos_(0, 0)
+    jsr setup_sprites
+    soft80_doio(setup_sprites2)    
+    rts
+
+setup_sprites:
+    sprite(1, "color_", LIGHT_GREEN)
+    sprite(2, "color_", LIGHT_RED)
+    sprite_pos_(1, 324, 50)
+    sprite_pos_(2, 324, 50)
+    rts
+setup_sprites2:
+    memcpy(soft80_bitmap + $1f40, parport.sprstart, parport.sprend - parport.sprstart) // move sprite data to matching vic address
+    sprite_sel_(soft80_vram, $e000 + $1f40, 1, 0)
+    sprite_sel_(soft80_vram, $e000 + $1f40, 2, 1)    
     rts
 
 .macro map_colors()
