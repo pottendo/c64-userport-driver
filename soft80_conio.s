@@ -199,10 +199,9 @@ a2:     sta $beef, x
         
 !dovram:
         // $01 == $34 -> vram
-        ldx #20
+        ldx #40
         lda VIC_CLEARCOL
 c1:     sta $beef, x
-c2:     sta $beef, x
         dex
         bne c1
 
@@ -322,9 +321,7 @@ soft80_first_init:
         poke16_(soft80.a1+1, a1_)
         poke16_(soft80.a2+1, a2_)
         .var c1_ = (soft80_colram - 1) + r * 40
-        .var c2_ = c1_ + 20
         poke16_(soft80.c1+1, c1_)
-        poke16_(soft80.c2+1, c2_)
         jsr soft80.clear_row_
 }
 

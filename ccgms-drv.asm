@@ -23,7 +23,9 @@
 
 .namespace ccgms_drv {
 .word pottendo_setup
+.word toggle4080
 pottendo_init: .byte $00    // flag to avoid double init
+mode4080:      .byte $01    // 40/80 toggle
 _t1:    .byte $00           // tmp for acc
 _tx:    .byte $00           // tmp for X
 _ty:    .byte $00           // tmp for y
@@ -31,10 +33,12 @@ _ty:    .byte $00           // tmp for y
 
 pottendo_setup:
 #if EXT80COLS
-    jsr ext80cols_init 
-#endif
     lda pottendo_init
-    //bne !+
+    cmp #$ff
+    beq !+
+    jsr ext80cols_init 
+!:
+#endif
     jsr parport.init
     poke16_($326, pottendo_out)
     poke16_($32a, pottendo_in)
@@ -44,8 +48,6 @@ pottendo_setup:
     poke16_(parport.rt3 + 1, ccgms.rtail)
     poke16_(parport.rt4 + 1, ccgms.rhead)
     uport_lread(ccgms.ribuf)                    // activate background read
-    inc pottendo_init
-!:
     rts
 
 pottendo_out:
@@ -61,6 +63,9 @@ pottendo_out:
 !:
     cmp #03     // screen
     bne !+
+    lda mode4080
+    cmp #00
+    beq !+
     save_regs()
     lda _t1
     jsr ext80cols_bsout
@@ -151,6 +156,20 @@ setup_sprites2:
     sprite_sel_(soft80_vram, $e000 + $1f40, 2, 1)    
     rts
 
+toggle4080:
+    poke8_(pottendo_init, $ff)   // ensure that soft80 init isn't called anymore on modem init XXX separate modem & 40/80 screen better
+    lda mode4080
+    eor #$01
+    sta mode4080 
+    beq m40 
+    jsr ext80cols_init
+    rts
+m40:
+    jsr soft80.soft80_shutdown
+    poke8_(VIC.BoC, BLACK)
+    sta VIC.BgC
+    rts
+    
 .macro map_colors()
 {
     .var collist = List().add(144, 5, 28, 159, 156, 30, 31, 158, 129, 149, 150, 151, 152, 153, 154, 155)
@@ -280,6 +299,9 @@ scroll24:
     rts
 clear_row24:
     clear_row(24)
+    rts
+#else // !80cols
+toggle4080:
     rts
 #endif
 }

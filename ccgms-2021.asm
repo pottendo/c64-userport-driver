@@ -1220,6 +1220,18 @@ mainab
  jmp main3
 ;check special-keys here
 specck
+
+ cmp #$93       ; XXXX CBM-HOME toggle 40/80cols; XXXX ctr-f7 toggle 40/80cols
+ bne ccont      ; CBM-home sends 0x93 in acc and 0x13 when pressed without modifier
+ ldx 653
+ cpx #$02       ; XXX check if CBM also pressed to distinguish CLR
+ bne ccont      
+ jsr toggle4080
+ jmp term
+toggle4080
+ jmp ($6700 + 2)        ; XXX keep aligned!
+ccont
+
  cmp #6
  bne specc1
  ldx 653
