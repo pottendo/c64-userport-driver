@@ -53,18 +53,6 @@ ext80cols_init:
     soft80_pos_(0, 0)
     rts
 
-setup_sprites:
-    sprite(1, "color_", LIGHT_GREEN)
-    sprite(2, "color_", LIGHT_RED)
-    sprite_pos_(1, 324, 50)
-    sprite_pos_(2, 324, 50)
-    rts
-setup_sprites2:
-    memcpy(soft80_bitmap + $1f40, parport.sprstart, parport.sprend - parport.sprstart) // move sprite data to matching vic address
-    sprite_sel_(soft80_vram, $e000 + $1f40, 1, 0)
-    sprite_sel_(soft80_vram, $e000 + $1f40, 2, 1)    
-    rts
-
 soft80_toggle4080:
     poke8_(s80_init, $ff)   // ensure that soft80 init isn't called anymore on modem init XXX separate modem & 40/80 screen better
     lda mode4080
