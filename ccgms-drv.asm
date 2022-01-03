@@ -1,14 +1,6 @@
 #define EXT80COLS
 #define HANDLE_MEM_BANK // must be set to enable proper handling in userport-drv along soft80
 
-/*
-#if EXT80COLS
-.file [name="ccgms-ext.prg", segments="Code"]
-#else
-.file [name="ccgms.prg", segments="Code"]
-#endif
-.segment Code[]
-*/
 .pc=$801
 .var ccgms_bin = LoadBinary("ccgms-2021.prg", "C64FILE")
 .fill ccgms_bin.getSize(), ccgms_bin.get(i)
@@ -59,8 +51,8 @@ pottendo_out:
     jsr parport.write_byte
     jsr parport.start_isr       // back to reading
     rts
-#if EXT80COLS
 !:
+#if EXT80COLS
     cmp #03     // screen
     bne !+
     lda mode4080
@@ -72,8 +64,8 @@ pottendo_out:
     restore_regs()
     lda _t1     // restor char
     rts
-#endif
 !:
+#endif
     lda _t1
 	jmp ccgms.oldout
 
