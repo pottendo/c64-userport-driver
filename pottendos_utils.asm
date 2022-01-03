@@ -187,6 +187,16 @@ tmp:        .word $0000
     pla
 }
 
+.macro jsr_ind(addr)
+{
+    lda #<ret
+    pha
+    lda #>ret
+    pha
+    jmp (addr)
+ret:
+}
+
 .macro poke8_(addr, val) {
     lda #val
     sta addr
