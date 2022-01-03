@@ -1229,7 +1229,7 @@ specck
  jsr toggle4080
  jmp term
 toggle4080
- jmp ($6700 + 2)        ; XXX keep aligned!
+ jmp ($6700 + 4)        ; XXX keep aligned! 
 ccont
 
  cmp #6
