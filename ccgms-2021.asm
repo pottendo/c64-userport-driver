@@ -7753,6 +7753,14 @@ nmi_startbit:
 		pha
 		tya
 		pha
+ 
+         ; XXX ensure I/O visibility when using soft80
+        lda $01
+        pha                     ; XXXsave mem layout on stack
+        lda #$37
+        sta $01
+        ; XXX
+        
         bit  $dd0d              ; check bit 7 (startbit ?)
         bpl  nv1                  ; no startbit received, then skip
         
@@ -7761,22 +7769,38 @@ nmi_startbit:
         sta  $dd0d              ; disable timer and FLAG interrupts
         lda  #<nmi_bytrdy       ; on next NMI call nmi_bytrdy
         sta  $0318           ; (triggered by SDR full)
-		lda  #>nmi_bytrdy       ; on next NMI call nmi_bytrdy
+        sta $fffa               ; XXX HW NMI vector
+	lda  #>nmi_bytrdy       ; on next NMI call nmi_bytrdy
         sta  $0319           ; (triggered by SDR full)
+        sta $fffb               ; XXX HW NMI vector
 
-    nv1 pla	; ignore, if NMI was triggered by RESTORE-key
+    nv1 
+        ; XXXrestore mem layout
+        pla
+        sta $01
+        ; XXX
+        
+        pla	; ignore, if NMI was triggered by RESTORE-key
         tay
-		pla
-		tax
-		pla
-		rti
+	pla
+	tax
+	pla
+	rti
 
 nmi_bytrdy:
         pha
-		txa
-		pha
-		tya
-		pha
+	txa
+	pha
+	tya
+	pha
+
+        ; XXX ensure I/O visibility when using soft80
+        lda $01
+        pha                     ; XXXsave mem layout on stack
+        lda #$37
+        sta $01
+        ; XXX
+        
         bit  $dd0d              ; check bit 7 (SDR full ?)
         bpl  nv1                  ; SDR not full, then skip (eg. RESTORE-key)
         
@@ -7785,8 +7809,11 @@ nmi_bytrdy:
         sta  $dd0d              ; enable FLAG (and timer) interrupts
         lda  #<nmi_startbit     ; on next NMI call nmi_startbit
         sta  $0318           ; (triggered by a startbit)
-		lda  #>nmi_startbit     ; on next NMI call nmi_startbit
+        sta  $fffa               ; XXX HW NMI vector
+
+	lda  #>nmi_startbit     ; on next NMI call nmi_startbit
         sta  $0319           ; (triggered by a startbit)
+        sta  $fffb               ; XXX HW NMI vector
         txa
         pha
         lda  $dd0c              ; read SDR (bit0=databit7,...,bit7=databit0)
@@ -7850,8 +7877,10 @@ enableup        sei
         ldx  #<nmi_startbit     ; install new NMI-handler
         ldy  #>nmi_startbit
         stx  $0318
+        stx  $fffa              ;XXX HW NMI handler
         sty  $0319
-		
+	sty  $fffb              ;XXX HW NMI handler
+
         ldx  ntsc               ; PAL or NTSC version ?
         lda  ilotab,x           ; (keyscan interrupt once every 1/64 second)
         sta  $dc06              ; (sorry this will break code, that uses
@@ -7889,12 +7918,15 @@ a8e0e   lda  #$00
         lda  #2                 ; enable RTS
         sta  $dd03              ; (the RTS line is the only output)
 		cli
+        
+        ; XXX hook soft80
+        jmp ($6700)
         rts
 
 		;; IRQ part
 
 new_irq:     
-	    lda  $dc0d    ;cia1: cia interrupt control register
+	lda  $dc0d    ;cia1: cia interrupt control register
         lsr 
         lsr 
         and  #$02
@@ -8002,9 +8034,21 @@ upgetxfer ; refer to this routine only if you wanna use it for protocols (xmodem
         sbc rtail
         cmp #50
         bcc +
+
+                ; XXX ensure I/O visibility when using soft80
+        lda $01
+        pha                     ; XXXsave mem layout on stack
+        lda #$37
+        sta $01
+        ; XXX
+
         lda #2                 ; enable RTS if there are less than 50 bytes
         ora $dd01              ; in the receive buffer
         sta $dd01
+
+        pla                    ; restore mem-layout
+        sta $01
+
     +   clc
 		pla
 	+	rts
@@ -8015,14 +8059,17 @@ newoutup  pha                        ;dupliciaton of original kernal routines
           lda  $9a                  ;test dfault output device for
           cmp  #$02                   ;screen, and...
           beq  +
-          pla                        ;if so, go back to original rom routines
-          jmp  oldout
+          ; XXX hook in soft80 output
+          ;;pla                        ;if so, go back to original rom routines
+          ;;jmp  oldout
+          jmp ($6700 + 2)
     +     
-		pla
-        sta $97
+	  pla
+          sta $97
 		stx $9e
 		sty $9f
-rsoutup pha
+rsoutup 
+        pha
 		cmp  #$80
 		and  #$7f
         tax 
@@ -8527,7 +8574,7 @@ baudrt .byte $02 ;2400 baud def
 mopo1  .byte $00 ;used to be pick up byte - unused and will now be atdt/atd byte - 00-atdt - 01-atd
 mopo2  .byte $20 ;hang up
 ;
-motype .byte $05 ;0=User Port, 1=UP9600
+motype .byte $01 ;0=User Port, 1=UP9600
 ;^modem type^   ;2=Swiftlink DE
                 ;3=Swiftlink D7
                 ;4=Swiftlink DF
