@@ -5,9 +5,11 @@ This project is closely connected to its counterpart, the *ESP32 userport driver
 It enables the C64 to communicate via its user-port connector to a ESP32 uController for various functions.
 Communcation in 8-bit parallel mode, enabling *high speed* (60+ kBaud) transfer rates.
 
-A driver to enable support for CCGMS has been added - along with an 80 columns driver to enjoy BBS-surfing in nice 80col-widescreen.
+A driver to enable support for CCGMS has been added - along with an 80 columns driver to enjoy BBS-surfing in nice 80cols-widescreen.
 
 A tiny IRC client to chat along the internet with your C64 is there for your communication with the internet on your beloved breadbox!
+
+**DISCLAIMER - Use at your own risk, especially when following the HW module as suggested in the ESP32 userport driver**
 
 ## Credits
 
@@ -25,7 +27,7 @@ Without the *Corona Virus*, this project never would have received the time to p
 
 In general Kick-Assembler (http://www.theweb.dk/KickAssembler/Main.html#frontpage) is used for assembling my source-code.
 CCGMS uses 64tass (https://sourceforge.net/projects/tass64/)
-To make this compatible I had to provide a little helper script as assembler-driver - see src/64tass.sh
+To make this compatible I had to provide a little helper script as assembler-driver - see src/64tass.sh<br>
 I drive all of this within VS Code, using the respective extensions to support Kick-Assembler and 64tass.
 
 This is completed by using c1541 to build .d64 ready for deployment on your favorite media.
@@ -40,25 +42,25 @@ This is completed by using c1541 to build .d64 ready for deployment on your favo
 Find some impressions here: https://photos.app.goo.gl/WtZMvKTRVcTbYcE1A
 
 ### userport driver
-Communication with its ESP counterpart is driven with the 8-bit parallel interface (PB0-PB7, control lines) of the C64. (Ab-)using the SP2 line in addtion to protect the CIA lines from both sides has been added. The driver optionall (build-time) takes care of memoray banking - necessary if used in conjunction with the soft80 console driver.
+Communication with its ESP counterpart is driven with the 8-bit parallel interface (PB0-PB7, control lines) of the C64. (Ab-)using the SP2 line in addtion to protect the CIA lines from both sides has been added. The driver optionally (build-time) takes care of memory banking - necessary if used in conjunction with the soft80 console driver.
 
 Read from userport is NMI driven, could be theoretically used in parallel to some computation.
 
-Write is synchronoues, providing even higher throughput.
+Write is synchronous, providing even higher throughput.
 
 ### CCGMS integration
 *CCGMS* has been slightly enhanced to support the driver. Flow Control is implemented, ensuring all bytes are received properly, even in soft80 mode, where screen output could lead to character loss, when connected to fast BBSs.
 
 After start, ensure modem function, by resetting the modem (uController) to synchronize the ESP and the C64 with all the control liens.
 
-In CCGMS, pressing *CBM-HOME* switches back/forth to 80 columns mode.
+In CCGMS, pressing *CBM-HOME* in terminal mode, switches back/forth to 80 columns mode.
 
 A separate CCGMS binary only enhanced with Soft80 is provided - note that only the UP9600/EZ232 driver currently supports soft80 - for other modems, the bank-switching needs to be added.
 
-The *Soft80 Console Driver* is highly optimized for a small memory footprint, by still being reasonable performant. It features PETSCII character support with some limits on coloring, which are just given by the GFX architectural limits. Together with CCGMS, great 80col-supporting BBSs outthere, it's the best BBS experience ever on a real C64!
+The *Soft80 Console Driver* is highly optimized for a small memory footprint, by still being reasonable performant. It features PETSCII character support with some limits on coloring, following the GFX architectural limits. Together with CCGMS, great 80col-supporting BBSs outthere, it's the best BBS experience ever on a real C64!
 
 ### IRC
-A (very) basic IRC client is shipped within the test-programs
+A (very) basic IRC client is shipped within the test-programs.
 
 ### Mandelbrot Zoomer
 
@@ -68,7 +70,7 @@ To show the potential of a uController as CoProcessor *) a small UI for mandelbr
 
 *) The *CoProcessor* is 2x240MHz @ 32bit incl. FPU. So one may challange, who's the 'Co' vs. the 1Mhz 6502! ;-)
 
-## Bugs / Featues needed
+## Bugs / Features needed
 - CCGMS sometimes won't start and locks. Run/Stop - Restore can help und just 'run' again. 
 - sometimes CCGMS locks up when surfing. Can be a driver issue, soft80 issue or just a bug in CCGMS.
 - IRC is very rudimentary
@@ -78,3 +80,10 @@ To show the potential of a uController as CoProcessor *) a small UI for mandelbr
 - Better error recovery
 - Request uController mode from C64
 - Add reboot commant for uController
+
+## License
+
+Refer to: https://github.com/pottendo/c64-userport-driver/blob/master/LICENSE
+
+This is a fun project - don't expect any *real* support if you need any help. I'll do my best to respond, though, as my time permits.
+(C) 2022, pottendo productions
