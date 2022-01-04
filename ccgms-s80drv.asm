@@ -9,12 +9,14 @@
 .word soft80_toggle4080
 
 s80_init:   .byte $00
-mode4080:   .byte $01
+mode4080:   .byte $00
 _t1:        .byte $00       // tmp for acc
 _tx:    .byte $00           // tmp for X
 _ty:    .byte $00           // tmp for y
 
 soft80_ccgms_init:
+    lda mode4080
+    beq !+
     lda s80_init
     cmp #$ff
     beq !+

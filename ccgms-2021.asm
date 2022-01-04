@@ -1665,7 +1665,7 @@ mssg
  jsr outstr
  lda #32
  jsr chrout
- ldx #02 ;2nd line start char
+ ldx #01 ;2nd line start char
  ;lda #163
 mslop1
  jsr chrout
@@ -1717,7 +1717,7 @@ ready2
  ldy #>rdytxt2
  jmp outstr
 msgtxt
-.byte 13,$93,8,5,14,18,32,28,32
+.byte 13,$93,8,144,14,18,32,28,32
 .text "c" 
 .byte 32,129,32
 .text "c" 
@@ -1730,7 +1730,7 @@ msgtxt
 .byte 32,156
 .text " ! "
 .byte 5,32
-.text "    tERMINAL 2021   "   ; XXX80cols: added cr
+.text "    tERMINAL 2021  "   ; XXX80cols: added cr
 .byte $0d, 00
 author  .text "BY cRAIG sMITH mODS BY aLWYZ/POTTENDO"
 .byte 146,151,$0d,00           ; XXX80cols: added cr
@@ -1748,7 +1748,8 @@ instx2
 .text 31,'c',28,'=',5,18,'f1',146,32,159,'mULTI-sEND    '
 .text 31,'c',28,'=',5,18,'f3',146,32,159,'mULTI-rECEIVE',13
 .text 31,'c',28,'=',5,18,'f5',146,32,154,'sEND DIR.     '
-.text 31,'c',28,'=',5,18,'f7',146,32,154,'sCREEN TO bUFF.',13,13,0
+.text 31,'c',28,'=',5,18,'f7',146,32,154,'sCREEN TO bUFF.',13
+.text 31,'c',28,'=',5,18,'HOME',146,32,154,'tOGGLE 40/80',13,0
 ;
 mlswrn .text 13,5,'bUFFER TOO BIG - sAVE OR cLEAR fIRST!',13,0
 ;
@@ -8046,7 +8047,7 @@ upgetxfer ; refer to this routine only if you wanna use it for protocols (xmodem
         ora $dd01              ; in the receive buffer
         sta $dd01
 
-        pla                    ; restore mem-layout
+        pla                    ; XXXrestore mem-layout
         sta $01
 
     +   clc
@@ -8107,6 +8108,14 @@ b7d45   lda  revtabup,x
 
 disableup  
 		sei
+
+        ; XXX ensure I/O visibility when using soft80
+        lda $01
+        pha                     ; XXXsave mem layout on stack
+        lda #$37
+        sta $01
+        ; XXX
+
         lda  #$7f
         sta  $dd0d              ; disable all CIA interrupts
         sta  $dc0d
@@ -8123,6 +8132,10 @@ disableup
         sta $0314     ;irq
         lda #>oldirq
         sta $0315     ;irq
+
+        pla                    ; XXXrestore mem-layout
+        sta $01
+
         cli 
         rts 
 		
@@ -8574,7 +8587,7 @@ baudrt .byte $02 ;2400 baud def
 mopo1  .byte $00 ;used to be pick up byte - unused and will now be atdt/atd byte - 00-atdt - 01-atd
 mopo2  .byte $20 ;hang up
 ;
-motype .byte $01 ;0=User Port, 1=UP9600
+motype .byte $05 ;0=User Port, 1=UP9600
 ;^modem type^   ;2=Swiftlink DE
                 ;3=Swiftlink D7
                 ;4=Swiftlink DF
