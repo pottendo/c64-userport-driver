@@ -1,5 +1,18 @@
 # c64-userport-driver
 
+- [c64-userport-driver](#c64-userport-driver)
+  - [Introduction](#introduction)
+  - [Credits](#credits)
+  - [Build](#build)
+  - [Features](#features)
+    - [userport driver](#userport-driver)
+    - [CCGMS integration](#ccgms-integration)
+    - [IRC](#irc)
+    - [Mandelbrot Zoomer](#mandelbrot-zoomer)
+  - [Bugs / Features needed](#bugs--features-needed)
+  - [License](#license)
+
+## Introduction
 This project is closely connected to its counterpart, the *ESP32 userport driver* (https://github.com/pottendo/esp32-userport-driver)
 
 It enables the C64 to communicate via its user-port connector to a ESP32 uController for various functions.
