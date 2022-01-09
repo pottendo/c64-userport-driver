@@ -16,7 +16,7 @@
 This project is closely connected to its counterpart, the *ESP32 userport driver* (https://github.com/pottendo/esp32-userport-driver)
 
 It enables the C64 to communicate via its user-port connector to a ESP32 uController for various functions.
-Communcation in 8-bit parallel mode, enabling *high speed* (60+ kBaud) transfer rates.
+Communcation in 8-bit parallel mode, enabling *high speed* transfer rates. Depending on data-junk sizes, in asynchronous (NMI interrupt driven) mode ~60k+ Baud can be reached, in synchronous mode, up to ~110k+ Baud.
 
 A driver to enable support for CCGMS has been added - along with an 80 columns driver to enjoy BBS-surfing in nice 80cols-widescreen.
 
