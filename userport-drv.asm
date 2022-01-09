@@ -241,7 +241,6 @@ next:
     lda CIA2.ICR
     and #%00010000
     beq !-
-
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy
     lda CIA2.PORTB
     sta (buffer), y
