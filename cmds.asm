@@ -87,7 +87,7 @@ mandel:
     jsr prep_cmd
     uport_write_(cmd_lit, 10)    // 4 byte cmd, 2x3byte for coordinates
     poke16_(cmd_args, 8000)
-    jsr do_rcv
+    uport_sread(gl.dest_mem, cmd_args)
     rts
 dump2:
     lda #$05
