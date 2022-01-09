@@ -140,6 +140,13 @@ cmdirc:
 #endif
     jsr irc.setup
     rts
+
+cmdsyncread:
+    print(str.inputnumber)
+    rnum(cmd_args)
+    jsr dump3
+    rts
+
 cmd9:
     print(str.finished)
     pla         // clear stack from last return address
@@ -254,6 +261,7 @@ cmd_vec:
     cmdp('9', cmd9)
     cmdp('T', cmdterminal)
     cmdp('I', cmdirc)
+    cmdp('S', cmdsyncread)
     cmdp($ff, lastcmd)
 
 .macro cmdp(c, addr)
@@ -355,6 +363,8 @@ screen1:
 .text "T) TERMINAL"
 .byte $0d
 .text "I) IRC"
+.byte $0d
+.text "S) SYNC READ"
 .byte $0d
 .text "9) EXIT"
 .byte $0d

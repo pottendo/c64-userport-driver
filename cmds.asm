@@ -101,7 +101,13 @@ irc_:
     jsr prep_cmd
     uport_write_(cmd_lit, 4)
     rts
-    
+dump3:
+    lda #$02
+    jsr prep_cmd
+    uport_write_(cmd_lit, 6)
+    uport_sread(gl.dest_mem, cmd_args)
+    rts
+
 // numeric int args: max 16bit in little endian format
 // string args: '0' as terminator
 // commands must have exactly 4 chars
@@ -115,6 +121,7 @@ cmd_read:   .text "READ"
 cmd_mandel: .text "MAND"        /* MAND<16bx8by> */
 cmd_dump2:  .text "DUM2"        /* DUM2<len> */
 cmd_irc:    .text "IRC_"        /* IRC_ */
+cmd_dump3:  .text "DUM3"        /* DUM3<len> - synchronous read*/
 cmd_lit:    .fill 4, $00        // here the command is put
 cmd_args:   .fill 256, i        // poke the args here
 cmd_inv:    .text "INVALID COMMAND."

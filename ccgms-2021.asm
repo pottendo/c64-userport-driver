@@ -7549,6 +7549,13 @@ nmisw        	pha
 				pha
 				tya
 				pha
+
+        ; XXX ensure I/O visibility when using soft80
+        lda $01
+        pha                     ; XXXsave mem layout on stack
+        lda #$37
+        sta $01
+        ; XXX                       
 sm1				lda sw_stat
 				and #%00001000	; mask out all but receive interrupt reg
 				bne sm2 ; get outta here if interrupts are disabled (disk access etc)
@@ -7573,7 +7580,13 @@ sm5        		lda         sw_cmd
 				and         #%11111101        ; re-enable receive interrupt
 sm6        		sta         sw_cmd
 recch2        	clc
-recch1        	pla
+recch1        
+        ; XXX recover mem-layout
+        pla
+        sta $01
+        ;XXX
+
+                pla
 				tay
 				pla
 				tax
@@ -7663,18 +7676,23 @@ sm19        	sta         sw_ctrl
         lda        #<nmisw
         ldx        #>nmisw
         sta        $0318
+        sta        $fffa        ; XXX HW NMI vector for soft80
         stx        $0319
+        stx        $fffb
        
         jsr clear232
 		cli
+        ; XXX hook soft80
+        jmp ($6700)                
         rts
 
 newout        	pha                        ;dupliciaton of original kernal routines
 				lda         $9a                  ;test dfault output device for
 				cmp         #$02                   ;screen, and...
 		        beq         +
-				pla                        ;if so, go back to original rom routines
-				jmp         oldout
+				;pla                        ;if so, go back to original rom routines
+				;jmp         oldout
+                                jmp ($6700 + 2) ; XXX soft80 entry
 +    			pla
 
 rsoutsw      
@@ -7734,7 +7752,18 @@ swgetxfer
 		bcs +                ; is it larger than 50?
 		ldx #startsw          ;if no, then dont start yet
 		stx paused
+        ; XXX ensure I/O visibility when using soft80
+        lda $01
+        pha                     ; XXXsave mem layout on stack
+        lda #$37
+        sta $01
+        ; XXX                
 		jsr flow
+        ; XXX recover mem-layout
+        pla
+        sta $01
+        ;XXX
+        
     +   clc
 		pla
 	+   rts
@@ -8587,7 +8616,7 @@ baudrt .byte $02 ;2400 baud def
 mopo1  .byte $00 ;used to be pick up byte - unused and will now be atdt/atd byte - 00-atdt - 01-atd
 mopo2  .byte $20 ;hang up
 ;
-motype .byte $05 ;0=User Port, 1=UP9600
+motype .byte $01 ;0=User Port, 1=UP9600
 ;^modem type^   ;2=Swiftlink DE
                 ;3=Swiftlink D7
                 ;4=Swiftlink DF

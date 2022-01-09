@@ -51,6 +51,14 @@
     jsr parport.start_isr
 }
 
+// dest: addr, len: addr
+.macro uport_sread(dest, len)
+{
+    adc16(len, dest, parport.len)
+    poke16_(parport.buffer, dest)   
+    jsr parport.sync_read
+}
+
 .macro uport_stop() {
     jsr parport.stop_isr
 }
@@ -113,6 +121,8 @@ init:
     sprite_pos_(2, 324, 50)
     poke16_(rin+1, rindon)
     poke16_(rif+1, rindoff)
+    poke16_(rin2+1, rindon)
+    poke16_(rif2+1, rindoff)
     poke16_(win+1, windon)
     poke16_(wif+1, windoff)
     rts
@@ -219,19 +229,16 @@ rt4:sbc $beef       // modified to point to ccgms
     rti
 
 sync_read:
-    poke8_(read_pending, 0)
     poke8_(CIA2.SDR, $ff)
     poke8_(CIA2.DIRB, $00)          // direction bit 0 -> input
+rin2:
+    jsr $beef                       // operand modified
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
     ldy #$00
-    lda CIA2.PORTB  // dummy read to trigger TC2
 next:
     clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
-!:  inc VIC.BoC
+!:  
     lda CIA2.ICR
-    nop 
-    nop
-    nop
     and #%00010000
     beq !-
 
@@ -245,7 +252,8 @@ next:
     cmp16(buffer, len) 
     bcc next
     clearbits(CIA2.PORTA, %11111011)
-    poke8_(read_pending, 0);
+rif2:
+    jsr $beef                       // operand modified
     rts
 
 setup_write:
