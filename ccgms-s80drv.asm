@@ -69,6 +69,17 @@ m40:
     sta VIC.BgC
     rts
     
+soft80_ccgms_pos:
+    php
+    save_regs()
+    lda mode4080
+    beq !+
+    soft80_pos(211, 214)
+!:
+    restore_regs()
+    plp
+    rts
+    
 .macro map_colors()
 {
     .var collist = List().add(144, 5, 28, 159, 156, 30, 31, 158, 129, 149, 150, 151, 152, 153, 154, 155)
@@ -85,7 +96,7 @@ m40:
 }
 .macro map_ignores()
 {
-    .var ignlist = List().add(2, 3, 8, 14, 15, 16, $82, $8e, $8f)
+    .var ignlist = List().add(0, 2, 3, 8, 14, 15, 16, 21, $82, $8e, $8f,148)
     .var l = ignlist.size()
     .for (var i = 0; i < l; i++)
     {

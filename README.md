@@ -51,24 +51,25 @@ This is completed by using c1541 to build .d64 ready for deployment on your favo
 - Testprograms for user-port driver
 
 ## Features
-
+  
 Find some impressions here: https://photos.app.goo.gl/WtZMvKTRVcTbYcE1A
 
 ### userport driver
 Communication with its ESP counterpart is driven with the 8-bit parallel interface (PB0-PB7, control lines) of the C64. (Ab-)using the SP2 line in addtion to protect the CIA lines from both sides has been added. The driver optionally (build-time) takes care of memory banking - necessary if used in conjunction with the soft80 console driver.
 
-Read from userport is NMI driven, could be theoretically used in parallel to some computation.
+Read from userport can be
+- asynchronous, NMI driven, could be used in parallel to some computation.
+- synchronous, for highest throughput
 
-Write is synchronous, providing even higher throughput.
+Write is always synchronous.
 
 ### CCGMS integration
 *CCGMS* has been slightly enhanced to support the driver. Flow Control is implemented, ensuring all bytes are received properly, even in soft80 mode, where screen output could lead to character loss, when connected to fast BBSs.
 
 After start, ensure modem function, by resetting the modem (uController) to synchronize the ESP and the C64 with all the control liens.
 
-In CCGMS, pressing *CBM-HOME* in terminal mode, switches back/forth to 80 columns mode.
-
-A separate CCGMS binary only enhanced with Soft80 is provided - note that only the UP9600/EZ232 driver currently supports soft80 - for other modems, the bank-switching needs to be added.
+In CCGMS, pressing *CBM-HOME* in terminal mode, switches back/forth to 80 columns mode.<br>
+Note that some dialogs (Settings, Phonebook editor, etc.) are not supported well in 80 columns mode. Use 40 cols mode for user interaction.
 
 The *Soft80 Console Driver* is highly optimized for a small memory footprint, by still being reasonable performant. It features PETSCII character support with some limits on coloring, following the GFX architectural limits. Together with CCGMS, great 80col-supporting BBSs outthere, it's the best BBS experience ever on a real C64!
 
@@ -77,9 +78,9 @@ A (very) basic IRC client is shipped within the test-programs.
 
 ### Mandelbrot Zoomer
 
-To show the potential of a uController as CoProcessor *) a small UI for mandelbrot zoom is provided within the test-programs. Note: to activate it:
+To show the potential of a uController as CoProcessor *) a small UI for mandelbrot zoom is provided within the test-programs. To activate it:
 - switch the ESP into CoRoutine mode (via Web, or MQTT)
-- start testdriver UI, select '0' (show screen) and '6' to launch calculation
+- start testdriver UI, select '0' (show screen) and '6' to launch calculation, use Joystick in port 2 to select areas of interest.
 
 *) The *CoProcessor* is 2x240MHz @ 32bit incl. FPU. So one may challange, who's the 'Co' vs. the 1Mhz 6502! ;-)
 
@@ -87,12 +88,13 @@ To show the potential of a uController as CoProcessor *) a small UI for mandelbr
 - CCGMS sometimes won't start and locks. Run/Stop - Restore can help und just 'run' again. 
 - sometimes CCGMS locks up when surfing. Can be a driver issue, soft80 issue or just a bug in CCGMS.
 - IRC is very rudimentary
-- CCGMS soft80 support only for pottendos parport and UP9600/EZ232 modems. No protection/error checking is done
-- CCGMS settings page is a bit weird in 80cols mode. Switch back to 40cols (CBM-HOME) in terminal mode.
+- CCGMS soft80 support only for pottendos parport and UP9600/EZ232 modems. No protection/error checking is done. Other drivers may fail without warning (Swiftlink, Serial)
+- CCGMS settings page is a bit weird in 80cols mode. Phonebook editor is not working in 80 columns mode. Switch back to 40cols (CBM-HOME) in terminal mode is recommended before entering the dialogs.
 - Better sanity checking if HW is there and in proper state
 - Better error recovery
 - Request uController mode from C64
 - Add reboot commant for uController
+- Provide a proper library wrapper for simpler use on the C64
 
 ## License
 

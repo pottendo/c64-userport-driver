@@ -85,7 +85,7 @@ cmd5:
     rnum(cmd_args)
     sta loopc
     poke16_(cmd_args, (1024 * 4) - 1)
-!:  jsr dump1
+!:  jsr dump3
     jsr delay
     dec loopc
     bne !-
