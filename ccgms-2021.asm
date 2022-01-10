@@ -7295,7 +7295,9 @@ rssetup
 		lda #<nmi64
         ldy #>nmi64
         sta $0318
+        sta $fffa       ; XXX soft80
         sty $0319
+        sty $fffb       ; XXX soft80
 		
         lda  #<rsout
         ldx  #>rsout
@@ -7308,8 +7310,8 @@ rssetup
         stx  $32b
 		
 		cli
-
-		jmp clear232
+		jsr clear232
+                jmp ($6700) ; XXX initialize soft80               
 		
 bdloc
 ntsc232    .word 3408,851,425    ; transmit times
@@ -7351,7 +7353,15 @@ nmi64   pha             ; new nmi handler
         pha
         tya
         pha
-nmi128  cld
+nmi128  
+        ; XXX ensure I/O visibility when using soft80
+        lda $01
+        pha                     ; XXXsave mem layout on stack
+        lda #$37
+        sta $01
+        ; XXX   
+
+        cld
         ldx $dd07       ; sample timer b hi byte
         lda #$7f        ; disable cia nmi's
         sta $dd0d
@@ -7429,7 +7439,11 @@ nmiflow lda $a8
     	and #$08
 		beq nmiexit
 		clc
-nmiexit pla
+nmiexit 
+        pla     ; XXX recover mem-layout
+        sta $01
+
+        pla
         tay
         pla
         tax
@@ -7484,8 +7498,9 @@ ret1    clc
 		ldy $9f
 		lda $97
 		rts
-notmod  pla
-		jmp  oldout
+notmod  ;pla
+	;	jmp  oldout
+        jmp ($6700 + 2)
 
 disabl  pha
 	-	;lda $02a1;this fucks shit up... get rid of it...
