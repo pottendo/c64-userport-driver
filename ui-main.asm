@@ -10,6 +10,7 @@ BasicUpstart2(main_entry)
 #import "cmds.asm"
 #import "soft80_conio.s"
 #import "irc.asm"
+#import "gfx.asm"
 
 // .segment _main
 main_entry:
@@ -21,6 +22,7 @@ main_entry:
     //poke8_(VIC.BgC, 0)
 
     show_screen(1, str.screen1)
+    jsr gfx.setup
     jsr loopmenu
 exit:
     rts
@@ -147,6 +149,11 @@ cmdsyncread:
     jsr dump3
     rts
 
+cmdnumbers:
+    //jsr gfx.doit
+    jsr gfx.calc_sine_uc
+    rts
+
 cmd9:
     print(str.finished)
     pla         // clear stack from last return address
@@ -262,6 +269,7 @@ cmd_vec:
     cmdp('T', cmdterminal)
     cmdp('I', cmdirc)
     cmdp('S', cmdsyncread)
+    cmdp('N', cmdnumbers)
     cmdp($ff, lastcmd)
 
 .macro cmdp(c, addr)
@@ -340,6 +348,8 @@ finished: .text "FINISHED."
     .byte $00
 invkey: .text "INVALID KEY PRESSED."
     .byte $00
+delimiter: .text "|"
+    .byte $00
 
 screen1:
 .text "0) SCREEN ON/OFF"
@@ -365,6 +375,8 @@ screen1:
 .text "I) IRC"
 .byte $0d
 .text "S) SYNC READ"
+.byte $0d
+.text "N) ACCEL. ARITHMETICS TEST"
 .byte $0d
 .text "9) EXIT"
 .byte $0d

@@ -40,6 +40,21 @@
     .label PLOT = $fff0
     .label GETIN = $ffe4
     .label BASIN = $ffcf
+    .label PI = $aea8
+    .label FAC1 = $61
+    .label FAC2 = $69
+    .label LFAC1 = $bba2    // load FAC1 from a/y
+    .label SFAC1 = $bbd4    // store FAC1 to x/y
+    .label LINT = $b391     // load FAC1 from y/a
+    .label LSACC = $bc3c    // 8bit SIGNED acc -> FAC1
+    .label LUY = $b3a2      // 8bit UNSIGNED Y -> FAC1
+    .label F2INT = $bc9b    // F2INT -> BigEndian $68-$65
+    .label FAC2STR = $bddd  // FAC1 -> $100
+    .label FDIV = $bb0f     // div mem a/y by FAC1
+    .label FMUL = $ba28     // mul mem a/y with FAC1
+    .label FADD = $b867     // add mem a/y with FAC1
+    .label FSUB = $b850     // sub mem a/y with FAC1
+    .label SIN = $e26b      // SIN(FAC1), in Radians
 }
 
 .namespace VIC {
@@ -498,6 +513,15 @@ rep:
     dec16(P.zpp1)
     jmp l1
 !:
+}
+
+.macro memcpy_f(dst, src, n)
+{
+    ldx #n
+!:  lda (src - 1), x
+    sta (dst - 1), x
+    dex
+    bne !-
 }
 
 // Spr# 0-7, "on"/"off"

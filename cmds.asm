@@ -107,6 +107,13 @@ dump3:
     uport_write_(cmd_lit, 6)
     uport_sread(gl.dest_mem, cmd_args)
     rts
+do_arith:
+    lda #$08
+    jsr prep_cmd
+    uport_write_(cmd_lit, 11)   // XXX be smarter and optimze
+    poke16_(cmd_args, 6)
+    uport_sread(gl.dest_mem, cmd_args) // expect one float result
+    rts
 
 // numeric int args: max 16bit in little endian format
 // string args: '0' as terminator
@@ -122,6 +129,7 @@ cmd_mandel: .text "MAND"        /* MAND<16bx8by> */
 cmd_dump2:  .text "DUM2"        /* DUM2<len> */
 cmd_irc:    .text "IRC_"        /* IRC_ */
 cmd_dump3:  .text "DUM3"        /* DUM3<len> - synchronous read*/
+cmd_arith:  .text "ARIT"        /* ARIT<fn-code byte><args> - uC math funcs */
 cmd_lit:    .fill 4, $00        // here the command is put
 cmd_args:   .fill 256, i        // poke the args here
 cmd_inv:    .text "INVALID COMMAND."
