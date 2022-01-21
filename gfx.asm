@@ -1,19 +1,26 @@
 #import "pottendos_utils.asm"
 #import "globals.asm"
 
+//#define NATIVE_FP
+
 .namespace gfx {
 
 // uC math fn codes
-.label uCFADD = %00010000
-.label uCFSUB = %00100000
-.label uCFMUL = %00110000
-.label uCFDIV = %01000000
-.label uCFSIN = %01010000
+// upper nibble: code of artihmetic function, bit3: 1->MFLPT 0->FLPT, bit-2: #of args
+.label uCFADD = %00010010
+.label uCFSUB = %00100010
+.label uCFMUL = %00110010
+.label uCFDIV = %01000010
+.label uCFSIN = %01010001
+.label uCFCOS = %01010001
 
-pi80th: .fill 5, 0
+pi80th: .fill 5, 0      // MFLPT format, 5 byte
+pi80th_FLPT: .fill 6, 0 // FLPT format, 6 byte
 scale: .fill 5, 0       // FP represenatation of C2
+scale_FLPT: .fill 6, 0       // FP represenatation of C2
 C1: .fill 1, 100        // shift
 C2: .fill 1, 100        // scale
+cmd_len:    .byte 11   // full command len incl. 4 byte ARIT - minimum 11byte: 4 + 1 + 6 (ARIT + fn# + one arg)
 
 _tmp1: .fill 5, 0
 
@@ -33,6 +40,7 @@ setup:
     ldx #<pi80th
     ldy #>pi80th
     jsr STD.SFAC1
+    memcpy_f(pi80th_FLPT, STD.FAC1, 6)  // store also FLPT format to avoid another converion need
     jsr STD.FAC2STR
     jsr $ab1e
 
@@ -41,6 +49,7 @@ setup:
     ldx #<scale
     ldy #>scale
     jsr STD.SFAC1
+    memcpy_f(scale_FLPT, STD.FAC1, 6)  // store also FLPT format to avoid another converion need
 
     rts
     
@@ -121,6 +130,7 @@ calc_sine:
     pha
     tay
     jsr STD.LUY
+#if NATIVE_FP
     lda #<pi80th
     ldy #>pi80th
     jsr STD.FMUL
@@ -128,6 +138,13 @@ calc_sine:
     lda #<scale   
     ldy #>scale
     jsr STD.FMUL
+#else
+    memcpy_f(cmd_args + 1, pi80th_FLPT, 6)
+    jsr calc_mul_uc
+    jsr calc_sin_uc
+    memcpy_f(cmd_args + 1, scale_FLPT, 6)
+    jsr calc_mul_uc
+#endif
     lda $66         // invert sign
     eor %10000000
     sta $66
@@ -140,23 +157,24 @@ calc_sine:
     tax
     rts
 
-calc_sine_uc:
-    lda #<STD.PI
-    ldy #>STD.PI
-    jsr STD.LFAC1
+// sin (FAC1)
+calc_sin_uc:
     memcpy_f(cmd_args + 1, STD.FAC1, 6)
     lda #uCFSIN 
     sta cmd_args
-    jsr do_arith
-    memcpy_f(STD.FAC1, gl.dest_mem, 6)
-
-    ldy #1
-    jsr STD.LUY
-    memcpy_f(cmd_args + 1, STD.FAC1, 6)
-    lda #uCFSIN 
-    sta cmd_args
-    jsr do_arith
-    memcpy_f(STD.FAC1, gl.dest_mem, 6)
-    
+    lda #11
+    sta cmd_len
+    jmp do_arith
     rts
+
+// mul FAC1 * (cmd_args +1)
+calc_mul_uc:
+    memcpy_f(cmd_args + 7, STD.FAC1, 6)
+    lda #uCFMUL
+    sta cmd_args
+    lda #17
+    sta cmd_len
+    jmp do_arith
+    rts
+    
 }

@@ -110,9 +110,9 @@ dump3:
 do_arith:
     lda #$08
     jsr prep_cmd
-    uport_write_(cmd_lit, 11)   // XXX be smarter and optimze
+    uport_write(cmd_lit, gfx.cmd_len)   // XXX be smarter and optimze
     poke16_(cmd_args, 6)
-    uport_sread(gl.dest_mem, cmd_args) // expect one float result
+    uport_sread(STD.FAC1, cmd_args) // expect one FLPT result
     rts
 
 // numeric int args: max 16bit in little endian format

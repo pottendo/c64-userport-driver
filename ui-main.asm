@@ -150,8 +150,8 @@ cmdsyncread:
     rts
 
 cmdnumbers:
-    //jsr gfx.doit
-    jsr gfx.calc_sine_uc
+    jsr gfx.doit
+    //jsr gfx.calc_sine_uc
     rts
 
 cmd9:
