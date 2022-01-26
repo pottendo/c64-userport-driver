@@ -242,7 +242,6 @@ rt4:sbc $beef       // modified to point to ccgms
     rti
 
 sync_read:
-    poke8_(VIC.BoC, RED)
     poke8_(CIA2.SDR, $ff)
     poke8_(CIA2.DIRB, $00)          // direction bit 0 -> input
 rin2:
@@ -267,13 +266,11 @@ rin2:
     clearbits(CIA2.PORTA, %11111011)
 rif2:
     jsr $beef                       // operand modified
-    poke8_(VIC.BoC, BLACK)
     rts
 
 // optimized sync read for small reads (<128 bytes)
 // dst address must be poked in _rf+1, x register holds len
 sync_read_f:
-    poke8_(VIC.BoC, RED)
     poke8_(CIA2.SDR, $ff)
     poke8_(CIA2.DIRB, $00)          // direction bit 0 -> input
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
@@ -288,13 +285,11 @@ sync_read_f:
     lda CIA2.PORTB
 _rf:
     sta $beef,y                     // operand modified
-    inc VIC.BoC
     iny
     dex
     bne !nc_f-
 !:
     clearbits(CIA2.PORTA, %11111011)
-    poke8_(VIC.BoC, BLACK)
     rts
 
 setup_write:
@@ -349,8 +344,6 @@ done:
 // optimized write buffer for small packets (<128 bytes)
 // pointer to data needs to be poked in _wf+1, x register holds len
 write_buffer_f:
-    poke8_(VIC.BoC, GREEN)
-
     sei 
     poke8_(CIA2.ICR, $7f)           // stop all interrupts
     poke8_(CIA2.SDR, 0)             // line -> low to tell C64 wants to write
@@ -375,9 +368,7 @@ _wf:
     clearbits(CIA2.PORTA, %11111011) // set PA2 low
     poke8_(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
     poke8_(CIA2.SDR, $ff)            // send %11111111, to tell C64 finished writing
-    poke8_(VIC.BoC, BLACK)
     cli
-
     rts
 
 write_byte:
