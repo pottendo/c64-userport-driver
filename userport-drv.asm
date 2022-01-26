@@ -59,6 +59,13 @@
     jsr parport.sync_read
 }
 
+// dest: addr, len: addr
+.macro uport_sread_f(dest)
+{
+    poke16_(parport._rf + 1, dest)   
+    jsr parport.sync_read_f
+}
+
 .macro uport_stop() {
     jsr parport.stop_isr
 }
@@ -242,8 +249,8 @@ rin2:
     jsr $beef                       // operand modified
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
     ldy #$00
-next:
-    clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
+!next:
+    clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive bla
 !:  
     lda CIA2.ICR
     and #%00010000
@@ -256,10 +263,37 @@ next:
     inc buffer + 1
 !:
     cmp16(buffer, len) 
-    bcc next
+    bcc !next-
     clearbits(CIA2.PORTA, %11111011)
 rif2:
     jsr $beef                       // operand modified
+    poke8_(VIC.BoC, BLACK)
+    rts
+
+// optimized sync read for small reads (<128 bytes)
+// dst address must be poked in _rf+1, x register holds len
+sync_read_f:
+    poke8_(VIC.BoC, RED)
+    poke8_(CIA2.SDR, $ff)
+    poke8_(CIA2.DIRB, $00)          // direction bit 0 -> input
+    setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
+    ldy #$00
+!nc_f:
+    clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
+!:  
+    lda CIA2.ICR
+    and #%00010000
+    beq !-
+    setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy _f
+    lda CIA2.PORTB
+_rf:
+    sta $beef,y                     // operand modified
+    inc VIC.BoC
+    iny
+    dex
+    bne !nc_f-
+!:
+    clearbits(CIA2.PORTA, %11111011)
     poke8_(VIC.BoC, BLACK)
     rts
 
@@ -336,7 +370,7 @@ _wf:
     setbits(CIA2.PORTA, %00000100)   // set PA2 high
     inc _wf+1                        // advance read address
     dex
-    bpl !n-
+    bne !n-
 
     clearbits(CIA2.PORTA, %11111011) // set PA2 low
     poke8_(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake

@@ -118,8 +118,10 @@ do_arith:
     ldx gfx.cmd_len
     uport_write_f(cmd_lit)   // XXX be smarter and optimze
     //uport_write(cmd_lit, gfx.cmd_len)
-    poke16_(cmd_args, 6)
-    uport_sread(STD.FAC1, cmd_args) // expect one FLPT result
+    //poke16_(cmd_args, 6)
+    //uport_sread(STD.FAC1, cmd_args) // expect one FLPT result
+    ldx #6
+    uport_sread_f(STD.FAC1) // expect one FLPT result
     rts
 
 // numeric int args: max 16bit in little endian format
