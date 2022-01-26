@@ -164,8 +164,11 @@ lastcmd:
 
 prep_sprites:
     memcpy(gl.vic_base + $2000, sprites.start, sprites.end - sprites.start) // move sprite data to matching vic address
+    memcpy(gl.vic_base + $2000 + 128, parport.sprstart, parport.sprend - parport.sprstart) 
     sprite_sel_(gl.vic_videoram, $2000, 0, 0)
     sprite_sel_(gl.vic_videoram, $2000, 7, 1)
+    sprite_sel_(gl.vic_videoram, $2000, 1, 2)
+    sprite_sel_(gl.vic_videoram, $2000, 2, 3)
     rts
 
 decx:

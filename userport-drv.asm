@@ -77,6 +77,12 @@
     jsr parport.write_buffer
 }
 
+// from: addr (best to be page alinged ($100)), xreg: len
+.macro uport_write_f(from) {
+    poke16_(parport._wf+1, from)
+    jsr parport.write_buffer_f
+}
+
 // write byte from acc to parport
 .macro out_byte() {
     pha
@@ -229,6 +235,7 @@ rt4:sbc $beef       // modified to point to ccgms
     rti
 
 sync_read:
+    poke8_(VIC.BoC, RED)
     poke8_(CIA2.SDR, $ff)
     poke8_(CIA2.DIRB, $00)          // direction bit 0 -> input
 rin2:
@@ -253,9 +260,11 @@ next:
     clearbits(CIA2.PORTA, %11111011)
 rif2:
     jsr $beef                       // operand modified
+    poke8_(VIC.BoC, BLACK)
     rts
 
 setup_write:
+    sei
     uport_stop()                    // ensure that NMIs are not handled
 win:    
     jsr $beef                       // operand modified, show W
@@ -271,9 +280,11 @@ close_write:
     poke8_(CIA2.SDR, $ff)            // send %11111111, to tell C64 finished writing
 wif:
     jsr $beef                       // operand modified
+    cli
     rts
 
 
+// lesser optimized, allowing up to 64k writes
 write_buffer:
     // sanity check for len == 0
     lda len + 1
@@ -299,6 +310,40 @@ loop:
     jmp loop
 done:
     jsr close_write
+    rts
+
+// optimized write buffer for small packets (<128 bytes)
+// pointer to data needs to be poked in _wf+1, x register holds len
+write_buffer_f:
+    poke8_(VIC.BoC, GREEN)
+
+    sei 
+    poke8_(CIA2.ICR, $7f)           // stop all interrupts
+    poke8_(CIA2.SDR, 0)             // line -> low to tell C64 wants to write
+    poke8_(CIA2.DIRB, $ff)          // direction bits 1 -> output
+    setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
+    
+!n:
+    clearbits(CIA2.PORTA, %11111011) // set PA2 low
+_wf:
+    lda $beef                        // operand modified
+    sta CIA2.PORTB
+!:  
+    lda #%10000     // check if receiver is ready to accept next char
+    bit CIA2.ICR
+    beq !-
+
+    setbits(CIA2.PORTA, %00000100)   // set PA2 high
+    inc _wf+1                        // advance read address
+    dex
+    bpl !n-
+
+    clearbits(CIA2.PORTA, %11111011) // set PA2 low
+    poke8_(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
+    poke8_(CIA2.SDR, $ff)            // send %11111111, to tell C64 finished writing
+    poke8_(VIC.BoC, BLACK)
+    cli
+
     rts
 
 write_byte:

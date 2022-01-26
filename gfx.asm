@@ -18,8 +18,8 @@ pi80th: .fill 5, 0      // MFLPT format, 5 byte
 pi80th_FLPT: .fill 6, 0 // FLPT format, 6 byte
 scale: .fill 5, 0       // FP represenatation of C2
 scale_FLPT: .fill 6, 0       // FP represenatation of C2
-C1: .fill 1, 100        // shift
-C2: .fill 1, 100        // scale
+C1: .byte 100        // shift
+C2: .byte 100        // scale
 cmd_len:    .byte 11   // full command len incl. 4 byte ARIT - minimum 11byte: 4 + 1 + 6 (ARIT + fn# + one arg)
 
 _tmp1: .fill 5, 0
@@ -44,18 +44,21 @@ setup:
     jsr STD.FAC2STR
     jsr $ab1e
 
+    ldy #100    // initialze scale with 100
+    sty C2
+
+    rts
+    
+doit:
     ldy C2
     jsr STD.LUY
     ldx #<scale
     ldy #>scale
     jsr STD.SFAC1
     memcpy_f(scale_FLPT, STD.FAC1, 6)  // store also FLPT format to avoid another converion need
-
-    rts
-    
-doit:
     ldy #0
-    ldx #160
+    ldx #159
+
 !:  
     save_regs()
     //ldy sine,x    // table driven
@@ -64,6 +67,15 @@ doit:
     restore_regs()
     dex
     bne !- 
+
+    lda C2
+    sbc8(C2, 10, C2)
+    cmp #0
+    beq !out+
+    jmp doit
+!out:
+    ldy #100    // reset scale to 100
+    sty C2
     rts
 
 // this code is borrowed from here

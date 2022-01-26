@@ -19,6 +19,7 @@ line1:
     .byte 00
 line2:
     .byte 00
+
 init_raster:
     sei
     sta VIC.RASTER                      // acc still has l1 8bit

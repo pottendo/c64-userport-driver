@@ -74,7 +74,8 @@ echo:
 dump1:
     lda #$02
     jsr prep_cmd
-    uport_write_(cmd_lit, 6)
+    ldx #6
+    uport_write_f(cmd_lit)
 do_rcv:
     uport_read(gl.dest_mem, cmd_args)
     rts
@@ -85,32 +86,38 @@ read:
 mandel:
     lda #$04
     jsr prep_cmd
-    uport_write_(cmd_lit, 10)    // 4 byte cmd, 2x3byte for coordinates
+    ldx #10         // 4 byte cmd, 2x3byte for coordinates
+    uport_write_f(cmd_lit)
     poke16_(cmd_args, 8000)
     uport_sread(gl.dest_mem, cmd_args)
     rts
 dump2:
     lda #$05
     jsr prep_cmd
-    uport_write_(cmd_lit, 6)
+    ldx #6
+    uport_write_f(cmd_lit)
     // dump back our rcv buffer with requested length
     uport_write(gl.dest_mem, cmd_args)
     rts
 irc_:
     lda #$06
     jsr prep_cmd
-    uport_write_(cmd_lit, 4)
+    ldx #4
+    uport_write_f(cmd_lit)
     rts
 dump3:
     lda #$02
     jsr prep_cmd
-    uport_write_(cmd_lit, 6)
+    ldx #6
+    uport_write_f(cmd_lit)
     uport_sread(gl.dest_mem, cmd_args)
     rts
 do_arith:
     lda #$08
     jsr prep_cmd
-    uport_write(cmd_lit, gfx.cmd_len)   // XXX be smarter and optimze
+    ldx gfx.cmd_len
+    uport_write_f(cmd_lit)   // XXX be smarter and optimze
+    //uport_write(cmd_lit, gfx.cmd_len)
     poke16_(cmd_args, 6)
     uport_sread(STD.FAC1, cmd_args) // expect one FLPT result
     rts
@@ -130,6 +137,7 @@ cmd_dump2:  .text "DUM2"        /* DUM2<len> */
 cmd_irc:    .text "IRC_"        /* IRC_ */
 cmd_dump3:  .text "DUM3"        /* DUM3<len> - synchronous read*/
 cmd_arith:  .text "ARIT"        /* ARIT<fn-code byte><args> - uC math funcs */
+.align $100 // needed to support optimized write
 cmd_lit:    .fill 4, $00        // here the command is put
 cmd_args:   .fill 256, i        // poke the args here
 cmd_inv:    .text "INVALID COMMAND."
