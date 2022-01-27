@@ -105,6 +105,23 @@ do_arith:
     uport_sread_f(STD.FAC1) // expect one FLPT result
     rts
 
+do_espplot:
+    inc VIC.BoC
+    lda #$09
+    jsr prep_cmd
+    ldx #5
+    uport_write_f(cmd_lit)
+!:
+    ldx #4  // 16bit x, y, col
+    uport_sread_f(gl.dest_mem)
+    lda gl.dest_mem + 2  // y == $ff as end-marker
+    cmp #$ff
+    beq !o+
+    jsr gfx.plot_pixel
+    jmp !-
+!o:
+    rts
+    
 // numeric int args: max 16bit in little endian format
 // string args: '0' as terminator
 // commands must have exactly 4 chars
@@ -120,6 +137,7 @@ cmd_dump2:  .text "DUM2"        /* DUM2<len> */
 cmd_irc:    .text "IRC_"        /* IRC_ */
 cmd_dump3:  .text "DUM3"        /* DUM3<len> - synchronous read*/
 cmd_arith:  .text "ARIT"        /* ARIT<fn-code byte><args> - uC math funcs */
+cmd_esppl:  .text "PLOT"        /* PLOT<plot# as one byte> */
 .align $100 // needed to support optimized write
 cmd_lit:    .fill 4, $00        // here the command is put
 cmd_args:   .fill 256, i        // poke the args here

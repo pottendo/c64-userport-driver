@@ -90,7 +90,7 @@ doit:
     bne !- 
 
     lda C2
-    sbc8(C2, 100, C2)
+    sbc8(C2, 10, C2)
     cmp #0
     beq !out+
     jmp doit
@@ -99,10 +99,15 @@ doit:
     sty C2
     rts
 
+plot_pixel:
+    poke16(_xwidth, gl.dest_mem)
+    ldy gl.dest_mem + 2
+    jsr plot
+    rts
+
 // this code is borrowed from here
 // https://codebase64.org/doku.php?id=base:various_techniques_to_calculate_adresses_fast_common_screen_formats_for_pixel_graphics    
 plot:
-
     ldx _xwidth
 _p1:lda #>xaddrhighmc
     sta XTBmdf + 2

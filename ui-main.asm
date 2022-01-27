@@ -153,7 +153,13 @@ cmdnumbers:
 cmdtogglemc:
     jsr screen.toggle_mc
     rts
-    
+
+cmdespplot:
+    lda #1
+    sta cmd_args
+    jsr do_espplot
+    rts
+        
 cmd9:
     print(str.finished)
     pla         // clear stack from last return address
@@ -274,6 +280,7 @@ cmd_vec:
     cmdp('S', cmdsyncread)
     cmdp('N', cmdnumbers)
     cmdp('M', cmdtogglemc)
+    cmdp('P', cmdespplot)
     cmdp($ff, lastcmd)
 
 .macro cmdp(c, addr)
@@ -381,6 +388,8 @@ screen1:
 .text "S) SYNC READ"
 .byte $0d
 .text "N) ACCEL. ARITHMETICS TEST"
+.byte $0d
+.text "P) PLOT TEST"
 .byte $0d
 .text "9) EXIT"
 .byte $0d
