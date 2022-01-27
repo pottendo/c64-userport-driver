@@ -8631,7 +8631,7 @@ baudrt .byte $02 ;2400 baud def
 mopo1  .byte $00 ;used to be pick up byte - unused and will now be atdt/atd byte - 00-atdt - 01-atd
 mopo2  .byte $20 ;hang up
 ;
-motype .byte $01 ;0=User Port, 1=UP9600
+motype .byte $05 ;0=User Port, 1=UP9600
 ;^modem type^   ;2=Swiftlink DE
                 ;3=Swiftlink D7
                 ;4=Swiftlink DF
