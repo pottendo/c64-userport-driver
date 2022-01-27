@@ -14,13 +14,15 @@
 .label uCFSIN = %01010001
 .label uCFCOS = %01010001
 
-pi80th: .fill 5, 0      // MFLPT format, 5 byte
-pi80th_FLPT: .fill 6, 0 // FLPT format, 6 byte
-scale: .fill 5, 0       // FP represenatation of C2
-scale_FLPT: .fill 6, 0       // FP represenatation of C2
-C1: .byte 100        // shift
-C2: .byte 100        // scale
-cmd_len:    .byte 11   // full command len incl. 4 byte ARIT - minimum 11byte: 4 + 1 + 6 (ARIT + fn# + one arg)
+pi80th:         .fill 5, 0 // MFLPT format, 5 byte
+pi80th_FLPT:    .fill 6, 0 // FLPT format, 6 byte
+scale:          .fill 5, 0 // FP represenatation of C2
+scale_FLPT:     .fill 6, 0 // FP represenatation of C2
+C1:             .byte 100  // y shift
+C2:             .byte 100  // y scale
+cmd_len:        .byte 11   // full command len incl. 4 byte ARIT - minimum 11byte: 4 + 1 + 6 (ARIT + fn# + one arg)
+xwidth:         .word 160  // or 320 for hires - toggled by mc/hr toggle
+_xwidth:        .word 160  // or 320 for hires - counter for plot
 
 _tmp1: .fill 5, 0
 
@@ -48,28 +50,47 @@ setup:
     sty C2
 
     rts
-    
+
+// acc == 1 -> mc, acc == 0 -> hires
+// patch plot function to adjust to MC or Hires mode
+toggle_mc:
+    cmp #0
+    beq !hr+
+    poke8_(_p1+1, >xaddrhighmc)
+    poke8_(_p2+1, >xaddrhighmc + $ff)
+    poke16_(_p3+1, xaddrlowmc)
+    poke16_(_p4+1, xaddrhighmc)
+    poke16_(_p5+1, xmaskmc)
+    poke16_(xwidth, 160)
+    rts
+!hr:
+    poke8_(_p1+1, >xaddrhighhr)
+    poke8_(_p2+1, >xaddrhighhr + $ff)
+    poke16_(_p3+1, xaddrlowhr)
+    poke16_(_p4+1, xaddrhighhr)
+    poke16_(_p5+1, xmaskhr)
+    poke16_(xwidth, 320)
+    rts
+
 doit:
     ldy C2
     jsr STD.LUY
     ldx #<scale
     ldy #>scale
     jsr STD.SFAC1
-    memcpy_f(scale_FLPT, STD.FAC1, 6)  // store also FLPT format to avoid another converion need
-    ldy #0
-    ldx #159
-
+    memcpy_f(scale_FLPT, STD.FAC1, 6)  // store also FLPT format to avoid another conversion need
+    poke16(_xwidth, xwidth)
 !:  
-    save_regs()
+    dec16(_xwidth)
+    //ldx _xwidth
     //ldy sine,x    // table driven
-    jsr calc_sine   // native 6502 calculated
+    jsr calc_sine
     jsr plot
-    restore_regs()
-    dex
+    cmp16_(_xwidth, 0)
     bne !- 
 
     lda C2
-    sbc8(C2, 10, C2)
+    sbc8(C2, 100, C2)
     cmp #0
     beq !out+
     jmp doit
@@ -81,18 +102,30 @@ doit:
 // this code is borrowed from here
 // https://codebase64.org/doku.php?id=base:various_techniques_to_calculate_adresses_fast_common_screen_formats_for_pixel_graphics    
 plot:
+
+    ldx _xwidth
+_p1:lda #>xaddrhighmc
+    sta XTBmdf + 2
+    lda _xwidth + 1
+    beq skipadj
+			
+_p2:lda #>xaddrhighmc + $FF
+    sta XTBmdf + 2		
+skipadj:
+
     lda yaddrlow,y
     clc
-    adc xaddrlow,x
+_p3:adc xaddrlowmc,x
     sta P.zpp1
 
     lda yaddrhigh,y
-    adc xaddrhigh,x
+XTBmdf:
+_p4:adc xaddrhighmc,x
     sta P.zpp1+1
 
     ldy #0
     lda (P.zpp1),y
-    ora xmask,x
+_p5:ora xmaskmc,x
     sta (P.zpp1),y
     rts
 
@@ -108,7 +141,8 @@ yaddrhigh:
     {
         .byte >(gl.vic_base + ((y & $07) + (320 * floor(y / 8))))
     }
-xaddrlow:
+
+xaddrlowmc:
     .for (var x = 0; x < 320; x+=8)
     {
         .for (var t = 0; t < 4; t++)
@@ -117,7 +151,7 @@ xaddrlow:
             .byte r
         }
     }
-xaddrhigh:
+xaddrhighmc:
     .for (var x = 0; x < 320; x+=8)
     {
         .for (var t = 0; t < 4; t++)
@@ -126,22 +160,49 @@ xaddrhigh:
             .byte r
         }
     }
-xmask:
+
+xaddrlowhr:
+    .for (var x = 0; x < 320; x+=8)
+    {
+        .for (var t = 0; t < 8; t++)
+        {
+            .var r = <x
+            .byte r
+        }
+    }
+xaddrhighhr:
+    .for (var x = 0; x < 320; x+=8)
+    {
+        .for (var t = 0; t < 8; t++)
+        {
+            .var r = >x
+            .byte r
+        }
+    }
+
+xmaskmc:
     .for (var x = 0; x < 320; x+=2)
     {
         .var r1 = (%11 << (6-((x-8) & $7)))
         .byte r1
     }
 
+xmaskhr:
+    .for (var x = 0; x < 320; x++)
+    {
+        .var r1 = (%1 << (7-(x & $7)))
+        .byte r1
+    }
+
 sine:
-    .fill 160, 100 + 100*sin(toRadians(i*360/160)) // Generates a sine curve
+    .fill 320, 100 + 100*sin(toRadians(i*360/320)) // Generates a sine curve
 
 // calc C1 + C2 * sin(i * PI/180)
 calc_sine:
-    txa
-    pha
-    tay
-    jsr STD.LUY
+    ldy _xwidth
+    lda _xwidth + 1
+    jsr STD.LSYA
+
 #if NATIVE_FP
     lda #<pi80th
     ldy #>pi80th
@@ -165,8 +226,6 @@ calc_sine:
     clc
     adc $65         // F2INT -> BigEndian $68-$65
     tay
-    pla
-    tax
     rts
 
 // sin (FAC1)

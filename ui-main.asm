@@ -16,7 +16,7 @@ BasicUpstart2(main_entry)
 main_entry:
     jsr parport.init
     memset(gl.dest_mem, 0, $2000)
-    memset(gl.dest_mem + $3c00, $bc, $400)
+    memset(gl.dest_mem + $3c00, $bc, $3f8)
     jsr prep_sprites
     //memset($d800, $98, $200)
     //poke8_(VIC.BgC, 0)
@@ -59,11 +59,7 @@ _s: jsr $BEEF   // operand modified
     jmp loopmenu
 
 cmd0:
-    lda scrstate
-    eor #$ff
-    sta scrstate
-    sta cmd_args
-    jsr toggle_screen
+    jsr screen.toggle_screen
     rts
 cmd1:
     print(str.inputtext)
@@ -154,6 +150,10 @@ cmdnumbers:
     //jsr gfx.calc_sine_uc
     rts
 
+cmdtogglemc:
+    jsr screen.toggle_mc
+    rts
+    
 cmd9:
     print(str.finished)
     pla         // clear stack from last return address
@@ -273,6 +273,7 @@ cmd_vec:
     cmdp('I', cmdirc)
     cmdp('S', cmdsyncread)
     cmdp('N', cmdnumbers)
+    cmdp('M', cmdtogglemc)
     cmdp($ff, lastcmd)
 
 .macro cmdp(c, addr)

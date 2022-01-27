@@ -48,6 +48,7 @@
     .label LINT = $b391     // load FAC1 from y/a
     .label LSACC = $bc3c    // 8bit SIGNED acc -> FAC1
     .label LUY = $b3a2      // 8bit UNSIGNED Y -> FAC1
+    .label LSYA = $b391     // 16bit SIGNED y/a -> FAC1
     .label F2INT = $bc9b    // F2INT -> BigEndian $68-$65
     .label FAC2STR = $bddd  // FAC1 -> $100
     .label FDIV = $bb0f     // div mem a/y by FAC1

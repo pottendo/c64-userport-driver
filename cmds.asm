@@ -3,25 +3,6 @@
 #import "screen.asm"
 
 // .segment _cmds
-
-// init / close screen
-toggle_screen:
-    lda cmd_args
-    beq !+
-    poke8_(VIC.BgC, BLACK)
-    sprite(0, "on", -1)
-    sprite(7, "on", -1)
-    //init_screen(49, 153, noop, noop)
-    jsr screen.mode
-    rts
-!:  
-    //close_screen()
-    sprite(0, "off", -1)
-    sprite(7, "off", -1)
-    jsr screen.rest
-    poke8_(VIC.BgC, BLUE)
-    rts
-
 noop:
     rts
     

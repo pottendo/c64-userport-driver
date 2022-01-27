@@ -15,11 +15,49 @@
 // .segment _screen
 
 screen: {
-line1:
-    .byte 00
-line2:
-    .byte 00
+line1:    .byte $00
+line2:    .byte $00
+scrstate: .byte $00
 
+// init / close screen
+toggle_screen:
+
+    lda scrstate
+    eor #$ff
+    sta scrstate
+    beq !+
+    poke8_(VIC.BgC, BLACK)
+    sprite(0, "on", -1)
+    sprite(7, "on", -1)
+    //init_screen(49, 153, noop, noop)
+    jsr mode
+    rts
+!:  
+    //close_screen()
+    sprite(0, "off", -1)
+    sprite(7, "off", -1)
+    jsr rest
+    poke8_(VIC.BgC, BLUE)
+    rts
+
+toggle_mc:
+    lda scrstate
+    beq !+
+    lda VIC.CR2
+    eor #%00010000     // bit 4 -> MC/HR
+    sta VIC.CR2
+    and #%00010000     // bit 4 -> MC/HR
+    beq hr 
+    memset(gl.dest_mem + $3c00, $bc, $3f8)
+    lda #1
+    jsr gfx.toggle_mc
+    rts
+hr:
+    memset(gl.dest_mem + $3c00, $10, $3f8)
+    lda #0
+    jsr gfx.toggle_mc
+!:  rts
+    
 init_raster:
     sei
     sta VIC.RASTER                      // acc still has l1 8bit
@@ -72,7 +110,6 @@ mode:
     sprite(0, "expy", "on")
     sprite(7, "expx", "on")
     sprite(7, "expy", "on")
-
     rts
 rest: 
     poke8_(VIC.BoC, 14)
