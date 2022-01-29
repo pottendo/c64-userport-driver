@@ -23,6 +23,7 @@ C2:             .byte 100  // y scale
 cmd_len:        .byte 11   // full command len incl. 4 byte ARIT - minimum 11byte: 4 + 1 + 6 (ARIT + fn# + one arg)
 xwidth:         .word 160  // or 320 for hires - toggled by mc/hr toggle
 _xwidth:        .word 160  // or 320 for hires - counter for plot
+pixelcol:       .byte $00
 
 _tmp1: .fill 5, 0
 
@@ -48,7 +49,6 @@ setup:
 
     ldy #100    // initialze scale with 100
     sty C2
-
     rts
 
 // acc == 1 -> mc, acc == 0 -> hires
@@ -62,6 +62,8 @@ toggle_mc:
     poke16_(_p4+1, xaddrhighmc)
     poke16_(_p5+1, xmaskmc)
     poke16_(xwidth, 160)
+    poke8_(_d1+1, $03)
+    poke16_(_d2+1, xpixelmc)
     rts
 !hr:
     poke8_(_p1+1, >xaddrhighhr)
@@ -70,6 +72,8 @@ toggle_mc:
     poke16_(_p4+1, xaddrhighhr)
     poke16_(_p5+1, xmaskhr)
     poke16_(xwidth, 320)
+    poke8_(_d1+1, $07)
+    poke16_(_d2+1, xpixelhr)
     rts
 
 doit:
@@ -84,6 +88,12 @@ doit:
     dec16(_xwidth)
     //ldx _xwidth
     //ldy sine,x    // table driven
+    lda _xwidth
+_d1:and #$03
+    tax
+_d2:lda xpixelmc,x
+    sta pixelcol
+
     jsr calc_sine
     jsr plot
     cmp16_(_xwidth, 0)
@@ -100,24 +110,33 @@ doit:
     rts
 
 plot_pixel:
+    cmp16(xwidth, gl.dest_mem)
+    bcc !out+
+    cmp8_(gl.dest_mem + 2, 200)
+    bcs !out+
     poke16(_xwidth, gl.dest_mem)
     ldy gl.dest_mem + 2
+    lda gl.dest_mem + 3     // col is already shifted into the correct location acc. x-coord
+    sta pixelcol
     jsr plot
     rts
-
+!out:
+    inc VIC.BoC
+    dec VIC.BoC
+    rts
+    
 // this code is borrowed from here
 // https://codebase64.org/doku.php?id=base:various_techniques_to_calculate_adresses_fast_common_screen_formats_for_pixel_graphics    
 plot:
-    ldx _xwidth
 _p1:lda #>xaddrhighmc
     sta XTBmdf + 2
     lda _xwidth + 1
     beq skipadj
-			
+
 _p2:lda #>xaddrhighmc + $FF
     sta XTBmdf + 2		
 skipadj:
-
+    ldx _xwidth
     lda yaddrlow,y
     clc
 _p3:adc xaddrlowmc,x
@@ -129,8 +148,10 @@ _p4:adc xaddrhighmc,x
     sta P.zpp1+1
 
     ldy #0
-    lda (P.zpp1),y
-_p5:ora xmaskmc,x
+_p5:lda xmaskmc,x 
+    eor #$ff
+    and (P.zpp1),y
+    ora pixelcol
     sta (P.zpp1),y
     rts
 
@@ -198,6 +219,11 @@ xmaskhr:
         .var r1 = (%1 << (7-(x & $7)))
         .byte r1
     }
+
+xpixelmc:
+    .byte $c0, $30, $0c, $03
+xpixelhr:
+    .byte $80, $40, $20, $10, $08, $04, $02, $01
 
 sine:
     .fill 320, 100 + 100*sin(toRadians(i*360/320)) // Generates a sine curve
