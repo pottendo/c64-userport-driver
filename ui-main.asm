@@ -155,7 +155,7 @@ cmdtogglemc:
     rts
 
 cmdespplot:
-    lda #1
+    lda #2
     sta cmd_args
     jsr do_espplot
     rts
