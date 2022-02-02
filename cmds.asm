@@ -71,7 +71,7 @@ mandel:
     uport_write_f(cmd_lit)
     //poke16_(cmd_args, 8000)
     //uport_sread(gl.dest_mem, cmd_args)
-    jsr !plpix+
+    jsr gfx.do_cmds
     rts
 dump2:
     lda #$05
@@ -111,15 +111,7 @@ do_espplot:
     jsr prep_cmd
     ldx #5
     uport_write_f(cmd_lit)
-!plpix:
-    ldx #4  // 16bit x, y, col
-    uport_sread_f(gl.dest_mem)
-    lda gl.dest_mem + 2  // y == $ff as end-marker
-    cmp #$ff
-    beq !o+
-    jsr gfx.plot_pixel
-    jmp !plpix-
-!o:
+    jsr gfx.do_cmds
     rts
     
 // numeric int args: max 16bit in little endian format

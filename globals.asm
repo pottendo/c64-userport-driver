@@ -11,4 +11,5 @@
     .label vic_base = $4000
     .label vic_videoram = vic_base + $3c00
     .label dest_mem = vic_base
+    .label gfx_buf = $c000
 }

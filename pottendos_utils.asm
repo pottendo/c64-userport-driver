@@ -282,6 +282,18 @@ ret:
     adc #>b 
     sta res + 1
 }
+// addr, addr, addr of res-meme
+.macro adc16m(a, b, res) 
+{   
+    clc
+    lda a
+    adc b
+    sta res
+    lda a + 1
+    adc b + 1
+    sta res + 1
+}
+
 // scalar, scalar, addr of res-meme
 .macro adc16_(a, b, res) 
 {   
@@ -314,12 +326,32 @@ ret:
     sta res + 1
 }
 
+// addr, addr, addr of res-meme
+.macro sbc16m(a, b, res) 
+{
+    sec
+    lda a
+    sbc b
+    sta res
+    lda a + 1
+    sbc b + 1
+    sta res + 1
+}
+
 // addr, scalar, addr of res-meme
 .macro sbc8(a, b, res) 
 {
     sec
     lda a
     sbc #<b
+    sta res
+}
+// addr, addr, addr of res-meme
+.macro sbc8m(a, b, res) 
+{
+    sec
+    lda a
+    sbc b
     sta res
 }
 

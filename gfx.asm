@@ -13,6 +13,14 @@
 .label uCFDIV = %01000010
 .label uCFSIN = %01010001
 .label uCFCOS = %01010001
+.label plPLOT = $14
+.label plFLH = $26    // col(1byte), p1(3byte), len(2byte)
+.label plFLV = $35    // col, p1, len(1byte)
+.label plLINE = $47   // col, p1, p2
+.label plFILLSC = $51 // col
+.label plFILLR = $67  // col, p1, p2
+.label plPLOTR = $77  // col, p1, p2
+.label plPLEND = $f0  // end marker
 
 pi80th:         .fill 5, 0 // MFLPT format, 5 byte
 pi80th_FLPT:    .fill 6, 0 // FLPT format, 6 byte
@@ -22,8 +30,19 @@ C1:             .byte 100  // y shift
 C2:             .byte 100  // y scale
 cmd_len:        .byte 11   // full command len incl. 4 byte ARIT - minimum 11byte: 4 + 1 + 6 (ARIT + fn# + one arg)
 xwidth:         .word 160  // or 320 for hires - toggled by mc/hr toggle
-_xwidth:        .word 160  // or 320 for hires - counter for plot
-pixelcol:       .byte $00
+_x:             .word 160  // or 320 for hires - counter for plot
+_y:             .byte 00
+pixelcol:       .byte $01
+x1: .word 0
+y1: .byte 100
+x2: .word 319
+y2: .byte 199
+dx: .word 0
+dy: .word 0
+xadd: .word 0
+yadd: .word 0
+rest: .word 0
+lin: .word 0
 
 _tmp1: .fill 5, 0
 
@@ -74,6 +93,20 @@ toggle_mc:
     poke16_(xwidth, 320)
     poke8_(_d1+1, $07)
     poke16_(_d2+1, xpixelhr)
+
+    /*    
+    poke16_(gl.gfx_buf+1, 10)
+    poke8_(gl.gfx_buf+3, 10)
+    poke16_(gl.gfx_buf+4, 250)
+    poke8_(gl.gfx_buf+6, 180)
+    poke8_(gl.gfx_buf, 1)
+    poke16_(x1, 10)
+    poke8_(y1, 10)
+    poke16_(x2, 310)
+    poke8_(y2, 12)
+    poke8_(pixelcol, 1)
+    jsr draw_line
+    */
     rts
 
 doit:
@@ -83,20 +116,15 @@ doit:
     ldy #>scale
     jsr STD.SFAC1
     memcpy_f(scale_FLPT, STD.FAC1, 6)  // store also FLPT format to avoid another conversion need
-    poke16(_xwidth, xwidth)
+    poke16(_x, xwidth)
 !:  
-    dec16(_xwidth)
-    //ldx _xwidth
+    dec16(_x)
+    //ldx _x
     //ldy sine,x    // table driven
-    lda _xwidth
-_d1:and #$03
-    tax
-_d2:lda xpixelmc,x
-    sta pixelcol
-
     jsr calc_sine
+    jsr prep_pcol
     jsr plot
-    cmp16_(_xwidth, 0)
+    cmp16_(_x, 0)
     bne !- 
 
     lda C2
@@ -110,15 +138,12 @@ _d2:lda xpixelmc,x
     rts
 
 plot_pixel:
-    cmp16(xwidth, gl.dest_mem)
+    cmp16(_x, xwidth)
     bcc !out+
-    cmp8_(gl.dest_mem + 2, 200)
+    cmp8_(_y, 200)
     bcs !out+
-    poke16(_xwidth, gl.dest_mem)
-    ldy gl.dest_mem + 2
-    lda gl.dest_mem + 3     // col is already shifted into the correct location acc. x-coord
-    sta pixelcol
-    jsr plot
+    jsr prep_pcol    
+    jsr plot_
     rts
 !out:
     inc VIC.BoC
@@ -127,16 +152,18 @@ plot_pixel:
     
 // this code is borrowed from here
 // https://codebase64.org/doku.php?id=base:various_techniques_to_calculate_adresses_fast_common_screen_formats_for_pixel_graphics    
+plot_:
+    ldy _y
 plot:
 _p1:lda #>xaddrhighmc
     sta XTBmdf + 2
-    lda _xwidth + 1
+    lda _x + 1
     beq skipadj
 
 _p2:lda #>xaddrhighmc + $FF
     sta XTBmdf + 2		
 skipadj:
-    ldx _xwidth
+    ldx _x
     lda yaddrlow,y
     clc
 _p3:adc xaddrlowmc,x
@@ -228,10 +255,251 @@ xpixelhr:
 sine:
     .fill 320, 100 + 100*sin(toRadians(i*360/320)) // Generates a sine curve
 
+prep_pcol:
+    lda _x
+_d1:and #$03
+    tax
+_d2:lda xpixelmc,x
+    sta pixelcol
+!out:
+    rts
+
+do_cmds:
+    ldx #1      // read command
+    uport_sread_f(gl.gfx_buf)
+    lda gl.gfx_buf 
+    cmp #plPLEND
+    beq !out-
+    cmp #plPLOT
+    bne !+
+    // plot
+    ldx #4
+    uport_sread_f(gl.gfx_buf)
+    poke8(pixelcol, gl.gfx_buf)
+    poke16(_x, gl.gfx_buf + 1)
+    ldy gl.gfx_buf + 3
+    jsr plot
+    jmp do_cmds
+!:  
+    cmp #plFILLSC
+    bne !+
+    // fill screen
+    ldx #1
+    uport_sread_f(gl.gfx_buf)
+    memset(gl.dest_mem, 0, 8000)
+    jmp do_cmds
+!:
+    cmp #plFLH
+    bne !+
+    // fast line horizontal
+    ldx #6
+    uport_sread_f(gl.gfx_buf)
+    poke8(pixelcol, gl.gfx_buf)
+    poke16(x1, gl.gfx_buf + 1)
+    poke8(y1, gl.gfx_buf + 3)
+    poke16(x2, gl.gfx_buf + 4)
+    jsr fdraw_line_x
+    jmp do_cmds
+!:
+    cmp #plFLV
+    bne !+
+    // fast line vertical
+    ldx #5
+    uport_sread_f(gl.gfx_buf)
+    poke8(pixelcol, gl.gfx_buf)
+    poke16(x1, gl.gfx_buf + 1)
+    poke8(y1, gl.gfx_buf + 3)
+    poke8(y2, gl.gfx_buf + 4)
+    jsr fdraw_line_y
+    jmp do_cmds
+!:
+    cmp #plPLOTR
+    bne !+
+    // draw rectangle
+    ldx #7
+    uport_sread_f(gl.gfx_buf)
+    poke8(pixelcol, gl.gfx_buf)
+    poke16(x1, gl.gfx_buf + 1)
+    poke8(y1, gl.gfx_buf + 3)
+    poke16(x2, gl.gfx_buf + 4)
+    poke8(y2, gl.gfx_buf + 6)
+    jsr fdraw_line_x
+    jsr fdraw_line_y
+    poke8(y1, gl.gfx_buf + 6)
+    jsr fdraw_line_x
+    poke16(x1, gl.gfx_buf + 4)
+    poke8(y1, gl.gfx_buf + 3)
+    jsr fdraw_line_y
+    jmp do_cmds
+!:
+    cmp #plFILLR
+    bne !+
+    // fill rectangle
+    ldx #7
+    uport_sread_f(gl.gfx_buf)
+    poke8(pixelcol, gl.gfx_buf)
+    poke16(x1, gl.gfx_buf + 1)
+    poke8(y1, gl.gfx_buf + 3)
+    poke16(x2, gl.gfx_buf + 4)
+    poke8(y2, gl.gfx_buf + 6)
+!_f1:
+    jsr fdraw_line_y
+    inc16(x1)
+    cmp16(x1, x2)
+    bcc !_f1-
+    beq !_f1-
+    jmp do_cmds
+!:
+    cmp #plLINE
+    bne !+
+    // draw line
+    ldx #7
+    uport_sread_f(gl.gfx_buf)
+    poke8(pixelcol, gl.gfx_buf)
+    poke16(x1, gl.gfx_buf + 1)
+    poke8(y1, gl.gfx_buf + 3)
+    poke16(x2, gl.gfx_buf + 4)
+    poke8(y2, gl.gfx_buf + 6)
+    jsr draw_line
+    jmp do_cmds
+!:
+    // unknown command
+    inc VIC.BoC
+    rts
+    
+fdraw_line_x:
+    poke16(_x, x1)
+    poke8(_y, y1)
+!:
+    jsr prep_pcol
+    jsr plot_
+    inc16(_x)
+    cmp16(_x, x2)
+    bcc !-
+    beq !-
+    rts
+
+fdraw_line_y:
+    poke8(_y, y1)
+    poke16(_x, x1)
+    jsr prep_pcol
+!:
+    jsr plot_
+    inc _y
+    cmp8(_y, y2)
+    bcc !-
+    beq !-
+    rts
+    
+draw_line:
+    cld
+    sbc16m(x2, x1, dx)
+    bpl line1
+    eor #$ff
+    sta dx + 1
+    lda dx
+    clc
+    eor #$ff
+    adc #$01
+    sta dx
+    bcc !+ 
+    inc dx+1
+!:  lda #$ff
+    sta xadd
+    sta xadd + 1
+    jmp line2
+line1:
+    poke16_(xadd, 1)
+line2:
+    lda dx + 1
+    bne line3
+    lda dx
+    bne line3
+    lda #0
+    sta rest
+    sta rest + 1
+    jmp line4
+line3:
+    lda #$ff
+    sta rest
+    sta rest + 1 
+line4:
+    sec
+    lda y2 
+    sbc y1
+    sta dy
+    lda #$00
+    sbc #$00
+    sta dy + 1
+    bpl line5
+    eor #$ff
+    sta dy + 1
+    lda dy 
+    eor #$ff
+    clc 
+    adc #$01
+    sta dy 
+    bcc !+
+    inc dy + 1
+!:  lda #$ff
+    sta yadd
+    jmp line6
+line5:
+    lda #$01
+    sta yadd
+line6:
+    lda dy + 1
+    cmp dx + 1
+    bcc line7
+    lda dy 
+    cmp dx
+    bcc line7
+    lda #$ff
+    sta lin 
+    jmp line8
+line7:
+    lda #$01
+    sta lin 
+line8:
+    poke16(_x, x1)
+    poke8(_y, y1)
+    jsr prep_pcol
+    jsr plot_
+
+line9:
+    lda y1
+    cmp y2
+    bne line10
+    lda x1
+    cmp x2
+    bne line10
+    lda x1+1
+    cmp x2+1
+    bne line10
+    rts
+line10:
+    lda rest + 1
+    bmi zweig1
+zweig2:
+    sbc16m(rest, dx, rest)
+    clc
+    lda y1
+    adc yadd
+    sta y1
+    lda lin 
+    bmi line8
+    jmp line9
+zweig1:
+    adc16m(rest, dy, rest)
+    adc16m(x1, xadd, x1)
+    lda lin
+    bmi line9
+    jmp line8
+
 // calc C1 + C2 * sin(i * PI/180)
 calc_sine:
-    ldy _xwidth
-    lda _xwidth + 1
+    ldy _x
+    lda _x + 1
     jsr STD.LSYA
 
 #if NATIVE_FP
@@ -278,5 +546,5 @@ calc_mul_uc:
     sta cmd_len
     jmp do_arith
     rts
-    
+
 }
