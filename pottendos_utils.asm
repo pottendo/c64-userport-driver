@@ -494,8 +494,8 @@ rep:
     sty addr + 1
 }
 
-// fill memory with val from acc
-.macro memset(addr, val, no)
+// fill memory with scalar val
+.macro memset_(addr, val, no)
 {
     poke16_(P.zpp1, addr)
     adc16(P.zpp1, no, P.zpp2)
@@ -504,6 +504,22 @@ rep:
 	cmp16(P.zpp1, P.zpp2)
     beq !+
 	lda #val
+    sta (P.zpp1), y
+    inc16(P.zpp1)
+    jmp !l1-
+!: 
+}
+
+// fill memory with content of addr pointed to val
+.macro memset(addr, val, no)
+{
+    poke16_(P.zpp1, addr)
+    adc16(P.zpp1, no, P.zpp2)
+    ldy #$00
+!l1:
+	cmp16(P.zpp1, P.zpp2)
+    beq !+
+	lda val
     sta (P.zpp1), y
     inc16(P.zpp1)
     jmp !l1-

@@ -40,7 +40,7 @@ setup:
     poke16_(msgptr, msgbuf)
     poke16_(currptr, msgbuf)
     poke8_(crs, 0)
-    memset(inputaddr, ' ', 80)
+    memset_(inputaddr, ' ', 80)
     memcpy(nick + 1, defnick, 16)   // +1 as color is fixed as first byte
 #if !EXT80COLS
     jsr STD.CLSCR
@@ -203,13 +203,13 @@ cpy2msgbuf:
     cmp #40
     bcc !+
     memcpy($0400, $0400 + 80, 16 * 40)      // two lines
-    memset(newentrypos, ' ', 80)
+    memset_(newentrypos, ' ', 80)
     lda #(newentrypos - 41)
     sta p1 + 1
     jmp update_dsp
 !:  
     memcpy($0400, $0400 + 40, 17 * 40)      // just one line
-    memset(newentrypos, ' ', 80)
+    memset_(newentrypos, ' ', 80)
     lda #(newentrypos - 1)
     sta p1 + 1
 #else

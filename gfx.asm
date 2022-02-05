@@ -82,7 +82,18 @@ toggle_mc:
     poke16_(_p5+1, xmaskmc)
     poke16_(xwidth, 160)
     poke8_(_d1+1, $03)
-    poke16_(_d2+1, xpixelmc)
+    poke16_(_d2+1, xpixelmc11)
+    poke16_(_d3 + 1, _d3 + 3)
+    /*
+    poke16_(x1, 5)
+    poke8_(y1, 10)
+    poke16_(x2, 159)
+    poke8_(y2, 180)
+    poke8_(pixelcol, 2)
+    jsr fdraw_line_x
+    poke8_(pixelcol, 3)
+    jsr fdraw_line_y
+    */
     rts
 !hr:
     poke8_(_p1+1, >xaddrhighhr)
@@ -93,6 +104,7 @@ toggle_mc:
     poke16_(xwidth, 320)
     poke8_(_d1+1, $07)
     poke16_(_d2+1, xpixelhr)
+    poke16_(_d3 + 1, prep_pcol_)
 
     /*    
     poke16_(gl.gfx_buf+1, 10)
@@ -100,12 +112,14 @@ toggle_mc:
     poke16_(gl.gfx_buf+4, 250)
     poke8_(gl.gfx_buf+6, 180)
     poke8_(gl.gfx_buf, 1)
-    poke16_(x1, 10)
-    poke8_(y1, 10)
+    poke16_(x1, 20)
+    poke8_(y1, 20)
     poke16_(x2, 310)
-    poke8_(y2, 12)
+    poke8_(y2, 170)
     poke8_(pixelcol, 1)
-    jsr draw_line
+    jsr fdraw_line_x
+    poke8_(pixelcol, 1)
+    jsr fdraw_line_y
     */
     rts
 
@@ -247,8 +261,14 @@ xmaskhr:
         .byte r1
     }
 
-xpixelmc:
-    .byte $c0, $30, $0c, $03
+xpixelmc11:
+    .byte %11000000, %00110000, %00001100, %00000011
+xpixelmc01:
+    .byte %01000000, %00010000, %00000100, %00000001
+xpixelmc10:
+    .byte %10000000, %00100000, %00001000, %00000010
+xpixelmc00:
+    .byte $0, $0, $0, $0
 xpixelhr:
     .byte $80, $40, $20, $10, $08, $04, $02, $01
 
@@ -256,10 +276,32 @@ sine:
     .fill 320, 100 + 100*sin(toRadians(i*360/320)) // Generates a sine curve
 
 prep_pcol:
+_d3:jmp * + 3   // operand modified for hr/mc
+    lda pixelcol
+    cmp #%11
+    bne !+
+    poke16_(_d2 + 1, xpixelmc11)
+    jmp prep_pcol_
+!:
+    cmp #%10
+    bne !+
+    poke16_(_d2 + 1, xpixelmc10)
+    jmp prep_pcol_
+!:
+    cmp #%01
+    bne !+
+    poke16_(_d2 + 1, xpixelmc01)
+    jmp prep_pcol_
+!:
+    cmp #%00
+    bne !+
+    poke16_(_d2 + 1, xpixelmc00)
+!:
+prep_pcol_:
     lda _x
 _d1:and #$03
     tax
-_d2:lda xpixelmc,x
+_d2:lda xpixelmc11,x
     sta pixelcol
 !out:
     rts
@@ -286,7 +328,9 @@ do_cmds:
     // fill screen
     ldx #1
     uport_sread_f(gl.gfx_buf)
-    memset(gl.dest_mem, 0, 8000)
+    memset_(gl.dest_mem, 0, 8000)
+    memset(gl.dest_mem + $3c00, gl.gfx_buf, $3f8)
+
     jmp do_cmds
 !:
     cmp #plFLH
@@ -324,11 +368,14 @@ do_cmds:
     poke16(x2, gl.gfx_buf + 4)
     poke8(y2, gl.gfx_buf + 6)
     jsr fdraw_line_x
+    poke8(pixelcol, gl.gfx_buf)
     jsr fdraw_line_y
     poke8(y1, gl.gfx_buf + 6)
+    poke8(pixelcol, gl.gfx_buf)
     jsr fdraw_line_x
     poke16(x1, gl.gfx_buf + 4)
     poke8(y1, gl.gfx_buf + 3)
+    poke8(pixelcol, gl.gfx_buf)
     jsr fdraw_line_y
     jmp do_cmds
 !:
@@ -337,12 +384,12 @@ do_cmds:
     // fill rectangle
     ldx #7
     uport_sread_f(gl.gfx_buf)
-    poke8(pixelcol, gl.gfx_buf)
     poke16(x1, gl.gfx_buf + 1)
     poke8(y1, gl.gfx_buf + 3)
     poke16(x2, gl.gfx_buf + 4)
     poke8(y2, gl.gfx_buf + 6)
 !_f1:
+    poke8(pixelcol, gl.gfx_buf)
     jsr fdraw_line_y
     inc16(x1)
     cmp16(x1, x2)

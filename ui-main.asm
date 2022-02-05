@@ -15,10 +15,10 @@ BasicUpstart2(main_entry)
 // .segment _main
 main_entry:
     jsr parport.init
-    memset(gl.dest_mem, 0, $2000)
-    memset(gl.dest_mem + $3c00, $bc, $3f8)
+    memset_(gl.dest_mem, 0, $2000)
+    memset_(gl.dest_mem + $3c00, $bc, $3f8)
     jsr prep_sprites
-    //memset($d800, $98, $200)
+    //memset_($d800, $98, $200)
     //poke8_(VIC.BgC, 0)
 
     show_screen(1, str.screen1)
@@ -76,7 +76,7 @@ cmd3:
     rts
 cmd4:
     show_screen(1, str.screen1)
-    memset(gl.dest_mem, 0, 8000)
+    memset_(gl.dest_mem, 0, 8000)
     rts
 cmd5:
     print(str.inputnumber)

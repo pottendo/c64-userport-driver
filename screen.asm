@@ -48,12 +48,12 @@ toggle_mc:
     sta VIC.CR2
     and #%00010000     // bit 4 -> MC/HR
     beq hr 
-    memset(gl.dest_mem + $3c00, $bc, $3f8)
+    memset_(gl.dest_mem + $3c00, $b2, $3f8)
     lda #1
     jsr gfx.toggle_mc
     rts
 hr:
-    memset(gl.dest_mem + $3c00, $10, $3f8)
+    memset_(gl.dest_mem + $3c00, $10, $3f8)
     lda #0
     jsr gfx.toggle_mc
 !:  rts
