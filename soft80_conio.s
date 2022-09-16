@@ -271,6 +271,7 @@ soft80_first_init:
 #import "soft80_cpeekrevers.s"
 }
 
+#if !REU
 .macro soft80_scroll(lines)
 {
         sei
@@ -313,7 +314,6 @@ soft80_first_init:
         cli
 }
 
-
 .macro clear_row(r)
 {
         .var a1_ = (soft80_bitmap -1) + r * 320
@@ -324,6 +324,91 @@ soft80_first_init:
         poke16_(soft80.c1+1, c1_)
         jsr soft80.clear_row_
 }
+
+#else
+
+// REU Speedup
+.macro soft80_scroll(lines)
+{
+        sei
+        lda $01
+        pha
+        reu_out_(1, 0, soft80_bitmap + 320, lines * 320)
+        lda #$34
+        sta $01
+        reu_kick()
+        pla
+        sta $01
+        pha
+        reu_in_(1, soft80_bitmap, 0, lines * 320)
+        lda #$34
+        sta $01
+        reu_kick()
+        pla
+        sta $01
+        pha
+        reu_out_(2, 0, soft80_colram + 40, lines * 40)
+        lda #$34
+        sta $01
+        reu_kick()
+        pla
+        sta $01
+        pha
+        reu_in_(2, soft80_colram, 0, lines * 40)
+        lda #$34
+        sta $01
+        reu_kick()
+        pla
+        sta $01
+        pha
+        reu_out_(2, 0, soft80_colram + 40, lines * 40)
+        lda #$35
+        sta $01
+        reu_kick()
+        pla
+        sta $01
+        pha
+        reu_in_(2, soft80_colram, 0, lines * 40)
+        lda #$35
+        sta $01
+        reu_kick()
+        pla
+        sta $01
+        cli
+}
+
+.macro clear_row(r)
+{
+        sei
+        lda $01
+        pha
+        lda #$ff
+        sta P.zpp1
+        reu_fill(soft80_bitmap + (r * 320), P.zpp1, 320)
+        lda #$34
+        sta $01
+        reu_kick()
+        pla
+        sta $01
+        pha
+        lda VIC_CLEARCOL
+        sta P.zpp1
+        reu_fill(soft80_colram + r * 40, P.zpp1, 40)
+        lda #$34
+        sta $01
+        reu_kick()
+        pla
+        sta $01
+        pha
+        reu_fill(soft80_colram + r * 40, P.zpp1, 40)
+        lda #$35
+        sta $01
+        reu_kick()
+        pla
+        sta $01
+        cli
+}
+#endif // REU
 
 // call function with RAM visible - e.g. to set Sprite pointers after vram
 .macro soft80_doio(fn)

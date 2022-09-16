@@ -77,6 +77,10 @@ reset_sprites:
     jsr parport.init
     rts
 
+crow:
+    clear_row(23)
+    rts
+    
 inputloop:
 #if !TEST_IRC
     jsr rcv_msgs
@@ -89,7 +93,7 @@ st: jsr store_input
 #if !EXT80COLS
     set_cursor(0, 23)
 #else
-    clear_row(23)
+    jsr crow
     poke8_(crs, 0)
 #endif
     jmp inputloop

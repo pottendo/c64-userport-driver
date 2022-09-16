@@ -4,6 +4,7 @@
 BasicUpstart2(main_entry)
 //#define TEST_IRC
 #define EXT80COLS
+#define REU
 
 #import "globals.asm"
 #import "pottendos_utils.asm"
@@ -11,6 +12,8 @@ BasicUpstart2(main_entry)
 #import "soft80_conio.s"
 #import "irc.asm"
 #import "gfx.asm"
+#import "RVCop64.asm"
+#import "reu.asm"
 
 // .segment _main
 main_entry:
@@ -159,7 +162,11 @@ cmdespplot:
     sta cmd_args
     jsr do_espplot
     rts
-        
+
+cmdreu:
+    jsr reu.test
+    rts
+
 cmd9:
     print(str.finished)
     pla         // clear stack from last return address
@@ -281,6 +288,7 @@ cmd_vec:
     cmdp('N', cmdnumbers)
     cmdp('M', cmdtogglemc)
     cmdp('P', cmdespplot)
+    cmdp('R', cmdreu)
     cmdp($ff, lastcmd)
 
 .macro cmdp(c, addr)
@@ -377,8 +385,8 @@ screen1:
 .byte $0d
 .text "6) MANDELBROT"
 .byte $0d
-.text "7) TOGGLE ATN"
-.byte $0d
+//.text "7) TOGGLE ATN"
+//.byte $0d
 .text "8) DUMP DATA C64->ESP"
 .byte $0d
 .text "T) TERMINAL"
@@ -390,6 +398,8 @@ screen1:
 .text "N) ACCEL. ARITHMETICS TEST"
 .byte $0d
 .text "P) PLOT TEST"
+.byte $0d
+.text "R) RVCop64"
 .byte $0d
 .text "9) EXIT"
 .byte $0d

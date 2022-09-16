@@ -237,6 +237,12 @@ ret:
     sta addr1 + 1
 }
 
+.macro poke32(addr1, addr2)
+{
+    poke16(addr1, addr2)
+    poke16(addr1+2, addr2+2)
+}
+
 // input best as binary val: e.g. %00010001
 .macro setbits(addr, val) {
     lda addr

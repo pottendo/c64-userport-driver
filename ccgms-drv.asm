@@ -1,7 +1,7 @@
 #define EXT80COLS
 #define HANDLE_MEM_BANK // must be set to enable proper handling in userport-drv along soft80
 #define POTTENDO_PPDRV 
-
+#define REU
 .pc=$801
 .var ccgms_bin = LoadBinary("ccgms-2021.prg", "C64FILE")
 .fill ccgms_bin.getSize(), ccgms_bin.get(i)
@@ -12,6 +12,7 @@
 #import "pottendos_utils.asm"
 #import "userport-drv.asm"
 
+
 .label ccgms_ext_entry = $6700  // pointers to extension entries: 
                                 // +0 -> soft80_init
                                 // +2 -> soft80_out
@@ -19,7 +20,9 @@
                                 // must consistent with 'pottendosetup' line ~7267 in ccgms-2021.asm
 .pc=ccgms_ext_entry       
 #import "ccgms-s80drv.asm"
-
+#if REU
+#import "reu.asm"
+#endif
 .namespace ccgms_drv {
 pottendo_init: .byte $00    // flag to avoid double init
 _t1:    .byte $00           // tmp for acc
