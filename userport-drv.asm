@@ -122,7 +122,7 @@ init:
     // clearbits(CIA2.CRA, %10101110)  // doesn't work, need to set full reg to 0; see next line
     poke8_(CIA2.CRA, 0)             // needed that this works?!
     setbits(CIA2.CRA, %01010001)    // shift->send, force load and enable timer in continous mode
-    poke8_(CIA2.SDR, $ff)           // send %11111111, to start output
+    poke8_(CIA2.SDR, $ff)           // send %11111111, to start C64 in read mode
 
     //sprite setup for IRC VIC config
     sprite_sel_($0400, $0340, 1, 0)
