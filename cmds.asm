@@ -71,7 +71,7 @@ mandel:
     uport_write_f(cmd_lit)
     //poke16_(cmd_args, 8000)
     //uport_sread(gl.dest_mem, cmd_args)
-    jsr gfx.do_cmds
+    jsr gfx.do_cmds_entry
     rts
 dump2:
     lda #$05
@@ -111,7 +111,7 @@ do_espplot:
     jsr prep_cmd
     ldx #5
     uport_write_f(cmd_lit)
-    jsr gfx.do_cmds
+    jsr gfx.do_cmds_entry
     rts
     
 // numeric int args: max 16bit in little endian format

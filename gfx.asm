@@ -306,12 +306,19 @@ _d2:lda xpixelmc11,x
 !out:
     rts
 
+!out_plot:
+    ldx #1
+//    uport_write_f(dbg)
+    rts
 do_cmds:
+    ldx #1
+//    uport_write_f(dbg)
+do_cmds_entry:
     ldx #1      // read command
     uport_sread_f(gl.gfx_buf)
     lda gl.gfx_buf 
     cmp #plPLEND
-    beq !out-
+    beq !out_plot-
     cmp #plPLOT
     bne !+
     // plot

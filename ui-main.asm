@@ -18,9 +18,9 @@ BasicUpstart2(main_entry)
 // .segment _main
 main_entry:
     jsr parport.init
+    jsr prep_sprites
     memset_(gl.dest_mem, 0, $2000)
     memset_(gl.dest_mem + $3c00, $bc, $3f8)
-    jsr prep_sprites
     //memset_($d800, $98, $200)
     //poke8_(VIC.BgC, 0)
 
@@ -182,6 +182,7 @@ prep_sprites:
     sprite_sel_(gl.vic_videoram, $2000, 7, 1)
     sprite_sel_(gl.vic_videoram, $2000, 1, 2)
     sprite_sel_(gl.vic_videoram, $2000, 2, 3)
+_d:
     rts
 
 decx:
@@ -423,7 +424,7 @@ right_lower:
 end:
 }
 // .print "argaddress: poke " + cmd_args + ",1"
-
+.print "ATTENTION: end of code = " + sprites.start + "(must be < " + $4000 + ")"
 .var testdriver = createFile("testdriver.bas")
 .eval testdriver.writeln(@"10 input \"command\"; a$")
 .eval testdriver.writeln(@"12 c=asc(mid$(a$,1,1))-asc(\"0\")")
@@ -435,9 +436,6 @@ end:
 //.eval testdriver.writeln("29 if r = 1 then sys " + process_cmd)
 .eval testdriver.writeln("30 if c <> 3 goto 10")
 .eval testdriver.writeln(@"32 for x = " + gl.dest_mem + " to " + gl.dest_mem + " + l")
-.print "argaddress: poke " + cmd_args + ",1"
-.print "argaddress: poke " + cmd_args + ",1"
-.print "argaddress: poke " + cmd_args + ",1"
 .print "argaddress: poke " + cmd_args + ",1"
 .eval testdriver.writeln("33 if peek(x) = 0 goto 10")
 .eval testdriver.writeln("34 print chr$(peek(x));")
