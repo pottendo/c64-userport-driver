@@ -1,7 +1,7 @@
 #define EXT80COLS
 #define HANDLE_MEM_BANK // must be set to enable proper handling in userport-drv along soft80
 #define POTTENDO_PPDRV 
-#define REU
+//#define REU
 .pc=$801
 .var ccgms_bin = LoadBinary("ccgms-2021.prg", "C64FILE")
 .fill ccgms_bin.getSize(), ccgms_bin.get(i)

@@ -167,13 +167,13 @@ rcv_msgs:
     rts
 !:
     ldx #1
-    uport_read_f(rcvbuffer)
+    uport_sread_f(rcvbuffer)
     ldx rcvbuffer
     cmp #81                 
     bcc !+                 // larger tan 80
     ldx #80                // truncate to 80
     inc VIC.BoC
-!:  uport_read_f(rcvbuffer + 1)
+!:  uport_sread_f(rcvbuffer + 1)
     dec parport.pinput_pending
     jsr parport.arm_msgcnt
 #endif

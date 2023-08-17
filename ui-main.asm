@@ -4,7 +4,7 @@
 BasicUpstart2(main_entry)
 //#define TEST_IRC
 #define EXT80COLS
-#define REU
+//#define REU
 
 #import "globals.asm"
 #import "pottendos_utils.asm"
