@@ -166,14 +166,14 @@ rcv_msgs:
     bne !+
     rts
 !:
-    poke8_(rcvbuffer + 1, 0)                // high byte 0, to support 16 bit len in addr - ugly misuse but efficient
-    uport_read_(rcvbuffer, 1)
-    lda rcvbuffer
+    ldx #1
+    uport_read_f(rcvbuffer)
+    ldx rcvbuffer
     cmp #81                 
-    bcc !+                  // larger tan 80
-    poke8_(rcvbuffer, 80)   // truncate to 80
+    bcc !+                 // larger tan 80
+    ldx #80                // truncate to 80
     inc VIC.BoC
-!:  uport_read(rcvbuffer + 1, rcvbuffer)    // len is stored here
+!:  uport_read_f(rcvbuffer + 1)
     dec parport.pinput_pending
     jsr parport.arm_msgcnt
 #endif

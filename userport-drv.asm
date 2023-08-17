@@ -59,7 +59,7 @@
     jsr parport.sync_read
 }
 
-// dest: addr, len: addr
+// dest: addr, lin in x-reg
 .macro uport_sread_f(dest)
 {
     poke16_(parport._rf + 1, dest)   
@@ -93,14 +93,14 @@
 // write byte from acc to parport
 .macro out_byte() {
     pha
-    clearbits(CIA2.PORTA, %11111011)    // set PA2 low
+    setbits(CIA2.PORTA, %00000100)    // set PA2 high
     pla
     sta CIA2.PORTB
+    clearbits(CIA2.PORTA, %11111011)    // set PA2 low
 !:  
     lda #%10000     // check if receiver is ready to accept next char
     bit CIA2.ICR
     beq !-
-    setbits(CIA2.PORTA, %00000100)    // set PA2 high
 }
 
 // .segment _par_drv
@@ -351,16 +351,15 @@ write_buffer_f:
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
     
 !n:
-    clearbits(CIA2.PORTA, %11111011) // set PA2 low
+    setbits(CIA2.PORTA, %00000100)   // set PA2 high
 _wf:
     lda $beef                        // operand modified
     sta CIA2.PORTB
+    clearbits(CIA2.PORTA, %11111011) // set PA2 low
 !:  
     lda #%10000     // check if receiver is ready to accept next char
     bit CIA2.ICR
     beq !-
-
-    setbits(CIA2.PORTA, %00000100)   // set PA2 high
     inc _wf+1                        // advance read address
     dex
     bne !n-
