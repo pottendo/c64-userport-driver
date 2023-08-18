@@ -731,3 +731,23 @@ clhb:
     out:
     }
 }
+
+.macro roms_off()
+{
+    sei
+    lda $01
+    pha
+    and #%11111100
+    ora #%00000010
+    sta $01
+    cli
+}
+
+.macro roms_on()
+{
+    sei
+    pla
+    sta $01
+    cli
+   
+}

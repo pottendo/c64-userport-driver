@@ -169,6 +169,7 @@ plot_pixel:
 plot_:
     ldy _y
 plot:
+    roms_off()
 _p1:lda #>xaddrhighmc
     sta XTBmdf + 2
     lda _x + 1
@@ -194,19 +195,20 @@ _p5:lda xmaskmc,x
     and (P.zpp1),y
     ora pixelcol
     sta (P.zpp1),y
+    roms_on()
     rts
 
     .var i
 yaddrlow:
     .for (var y = 0; y < 200; y++)
     {  
-        .var r = <(gl.vic_base + ((y & $07) + (320 * floor(y / 8))))
+        .var r = <(gl.dest_mem + ((y & $07) + (320 * floor(y / 8))))
         .byte r
     }
 yaddrhigh:
     .for (var y = 0; y < 200; y++)
     {
-        .byte >(gl.vic_base + ((y & $07) + (320 * floor(y / 8))))
+        .byte >(gl.dest_mem + ((y & $07) + (320 * floor(y / 8))))
     }
 
 xaddrlowmc:
@@ -336,7 +338,7 @@ do_cmds_entry:
     ldx #1
     uport_sread_f(gl.gfx_buf)
     memset_(gl.dest_mem, 0, 8000)
-    memset(gl.dest_mem + $3c00, gl.gfx_buf, $3f8)
+    memset(gl.vic_videoram, gl.gfx_buf, $3f8)
 
     jmp do_cmds
 !:

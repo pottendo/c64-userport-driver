@@ -18,12 +18,11 @@ BasicUpstart2(main_entry)
 // .segment _main
 main_entry:
     jsr parport.init
-    jsr prep_sprites
-    memset_(gl.dest_mem, 0, $2000)
-    memset_(gl.dest_mem + $3c00, $bc, $3f8)
+    memset_(gl.dest_mem, 0, 8000)
+    memset_(gl.vic_videoram, $bc, $3f8)
     //memset_($d800, $98, $200)
     //poke8_(VIC.BgC, 0)
-
+    jsr prep_sprites
     show_screen(1, str.screen1)
     jsr gfx.setup
     jsr loopmenu
@@ -176,12 +175,12 @@ lastcmd:
     rts
 
 prep_sprites:
-    memcpy(gl.vic_base + $2000, sprites.start, sprites.end - sprites.start) // move sprite data to matching vic address
-    memcpy(gl.vic_base + $2000 + 128, parport.sprstart, parport.sprend - parport.sprstart) 
-    sprite_sel_(gl.vic_videoram, $2000, 0, 0)
-    sprite_sel_(gl.vic_videoram, $2000, 7, 1)
-    sprite_sel_(gl.vic_videoram, $2000, 1, 2)
-    sprite_sel_(gl.vic_videoram, $2000, 2, 3)
+    memcpy(gl.vic_base + $400, sprites.start, sprites.end - sprites.start) // move sprite data to matching vic address
+    memcpy(gl.vic_base + $400 + 128, parport.sprstart, parport.sprend - parport.sprstart) 
+    sprite_sel_(gl.vic_videoram, $400, 0, 0)
+    sprite_sel_(gl.vic_videoram, $400, 7, 1)
+    sprite_sel_(gl.vic_videoram, $400, 1, 2)
+    sprite_sel_(gl.vic_videoram, $400, 2, 3)
 _d:
     rts
 

@@ -50,7 +50,7 @@ test:
     rts     // no REU
 !:
     inc VIC.BoC
-    reu_fill(gl.vic_base, VIC.BoC, 8000)
+    reu_fill(gl.dest_mem, VIC.BoC, 8000)
     rts
 }   
 

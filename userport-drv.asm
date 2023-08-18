@@ -364,7 +364,6 @@ _wf:
     dex
     bne !n-
 
-    clearbits(CIA2.PORTA, %11111011) // set PA2 low
     poke8_(CIA2.DIRB, $00)           // set for input, to avoid conflict by mistake
     poke8_(CIA2.SDR, $ff)            // send %11111111, to tell C64 finished writing
     cli

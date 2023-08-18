@@ -48,12 +48,12 @@ toggle_mc:
     sta VIC.CR2
     and #%00010000     // bit 4 -> MC/HR
     beq hr 
-    memset_(gl.dest_mem + $3c00, $b2, $3f8)
+    memset_(gl.vic_videoram, $b2, $3f8)
     lda #1
     jsr gfx.toggle_mc
     rts
 hr:
-    memset_(gl.dest_mem + $3c00, $10, $3f8)
+    memset_(gl.vic_videoram, $10, $3f8)
     lda #0
     jsr gfx.toggle_mc
 !:  rts
@@ -95,11 +95,11 @@ tmp1: .byte $00
 /* callbacks to set vic mode */
 mode: 
     clearbits(CIA2.base, %11111100) // select VIC bank $4000-$7FFF
-    setbits(CIA2.base, %00000010)
+    setbits(CIA2.base, %00000001)
     lda VIC.MEM                     // move VIC screen to base + $0000
     sta tmp1
-    and #%00001111
-    ora #%11110000  // screen to base + $3C00
+    and #%00000111
+    ora #%00001000 // screen to base + $3C00
     sta VIC.MEM
     setbits(VIC.CR1, %00100000)     // bit 5 -> HiRes
     setbits(VIC.CR2, %00010000)     // bit 4 -> MC
