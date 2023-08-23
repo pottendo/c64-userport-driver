@@ -423,7 +423,6 @@ right_lower:
 end:
 }
 // .print "argaddress: poke " + cmd_args + ",1"
-.print "ATTENTION: end of code = " + sprites.start + "(must be < " + $4000 + ")"
 .var testdriver = createFile("testdriver.bas")
 .eval testdriver.writeln(@"10 input \"command\"; a$")
 .eval testdriver.writeln(@"12 c=asc(mid$(a$,1,1))-asc(\"0\")")

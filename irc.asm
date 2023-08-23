@@ -39,9 +39,6 @@ _t2:        .byte $00
 .label rhead = $029c
 
 setup:
-#if !TEST_IRC
-    jsr parport.arm_msgcnt  // launch NMI counter for pending msgs
-#endif
     poke16_(msgptr, msgbuf)
     poke16_(currptr, msgbuf)
     poke8_(crs, 0)
@@ -60,12 +57,13 @@ setup:
     soft80_wstring(0, 22, seperator)
     soft80_pos_(0, 23)
 #endif
-
+    poke8_(rhead, 0)
+    poke8_(rtail, 0)
     poke16_(parport.rt1 + 1, rtail)       // modify rtail operand for loopread
     poke16_(parport.rt2 + 1, ribuf)
     poke16_(parport.rt3 + 1, rtail)
     poke16_(parport.rt4 + 1, rhead)
-    uport_lread(ccgms.ribuf)              // activate background read
+    uport_lread(ribuf)                    // activate background read
 
     jsr inputloop
     jsr soft80.soft80_shutdown
@@ -179,13 +177,14 @@ rcv_msgs:
     rts
 !:
     // input has arrived, read until end-marker $ff
-    beq empty_read+
     cmp #$ff
     beq cpy2msgbuf
+    cmp #0
+    beq !empty_read+
     inc rcvbuffer
     ldx rcvbuffer
     sta rcvbuffer, x
-empty_read:
+!empty_read:
     jsr irc_in
     jmp !-
 
@@ -321,7 +320,8 @@ irc_in:
     jsr rsgetxfer
 	bcs !+              // if no character, then return 0 in a
     rts
-!:	clc
+!:	
+    clc
     lda #0
     rts
 rsgetxfer:
@@ -344,7 +344,9 @@ rsgetxfer:
     bcc !+  
     clc 
     pla
+    rts
 !empty:
+    sec
     rts
 !:
 #if HANDLE_MEM_BANK
@@ -354,7 +356,7 @@ rsgetxfer:
         lda     #$37
         sta     $01          
 #endif
-    poke8_(VIC.BoC, YELLOW)
+    //poke8_(VIC.BoC, YELLOW)
     clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive again
 #if HANDLE_MEM_BANK
         pla
