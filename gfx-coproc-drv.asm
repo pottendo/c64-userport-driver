@@ -117,7 +117,7 @@ do_circles:
 
 do_fcircles:
     // circles filled
-    poke8_(coproc+10, 40)   // iterator counter
+    poke8_(coproc+10, 24)   // iterator counter
     poke16_(coproc+3, 310)
     poke8_(coproc+5, 100)
     poke16_(coproc+6, 99)
@@ -144,11 +144,11 @@ do_fcircles:
 
 do_lines2:
     // lines
-    poke8_(coproc+10, 16)   // iterator counter
-    poke16_(coproc+3, 0)
+    poke8_(coproc+10, 8)   // iterator counter
+    poke16_(coproc+3, 256)
     poke8_(coproc+5, 0)
-    poke16_(coproc+6, 16)
-    poke8_(coproc+8, 0)
+    poke16_(coproc+6, 256)
+    poke8_(coproc+8, 199)
 !again:
     poke8_(coproc, 0)
     poke8_(coproc+2, 1)
@@ -158,10 +158,8 @@ do_lines2:
     poke8_(coproc+2, 0)
     poke8_(coproc+1, CLINE)
     wait4cr(1)
-    inc coproc+3
-    inc coproc+5
-    inc coproc+6
-    inc coproc+8
+    inc16(coproc+3)
+    inc16(coproc+6)
     dec coproc+10
     bne !again-
     rts
@@ -169,34 +167,37 @@ do_lines2:
 do_tiny_circles:
 
     // circles filled
-    poke8_(coproc+10, 100)   // iterator counter
-    poke16_(coproc+3, 0)
+    poke8_(coproc+10, 8)   // iterator counter
+    poke16_(coproc+3, 8)
     poke8_(coproc+5, 100)
-    poke16_(coproc+6, 3)
+    poke16_(coproc+6, 1)
 !again:
     poke8_(coproc, 0)
     poke8_(coproc+2, $81)    // #%1xxxxxxx signals filling
     poke8_(coproc+1, CCIRCLE)
     wait4cr(0)
 
-#if CLEAR2
+#if CLEAR
     poke8_(coproc, 0)
     poke8_(coproc+2, $80)
     poke8_(coproc+1, CCIRCLE)
     wait4cr(1)
 #endif 
 
-    adc16(coproc+3, 1, coproc+3)
-    adc8(coproc+5, 8, coproc+5)
+    adc16(coproc+3, 4, coproc+3)
+    adc8(coproc+5, 1, coproc+5)
+    //adc16(coproc+6, 1, coproc+6)
     dec coproc+10
-    bne !again-
+    beq !out+
+    jmp !again-
+!out:
     rts
     
 do_tiny_lines:
     poke8_(coproc+10, 16)   // iterator counter
     poke16_(coproc+3, 0)
     poke8_(coproc+5, 100)
-    poke16_(coproc+6, 8)
+    poke16_(coproc+6, 1)
     poke8_(coproc+8, 100)
 !again:
     poke8_(coproc, 0)
@@ -211,6 +212,29 @@ do_tiny_lines:
     inc coproc+6
     sbc8(coproc+5, 1, coproc+5)
     sbc8(coproc+8, 1, coproc+8)
+
+    dec coproc+10
+    bne !again-
+   
+    rts
+
+do_tiny_lines2:
+    poke8_(coproc+10, 16)   // iterator counter
+    poke16_(coproc+3, 0)
+    poke8_(coproc+5, 0)
+    poke16_(coproc+6, 0)
+    poke8_(coproc+8, 199)
+!again:
+    poke8_(coproc, 0)
+    poke8_(coproc+2, 1)
+    poke8_(coproc+1, CLINE)
+    wait4cr(0)
+    poke8_(coproc, 0)
+    poke8_(coproc+2, 0)
+    poke8_(coproc+1, CLINE)
+    wait4cr(1)
+    inc coproc+3
+    inc coproc+6
 
     dec coproc+10
     bne !again-
@@ -232,12 +256,13 @@ main_entry:
     setbits(VIC.CR1, %00100000)     // bit 5 -> HiRes
 
     jsr do_tiny_circles
-    //jsr do_lines2
-    //jsr do_tiny_lines
-    //jsr do_lines
-    //jsr do_circles
-    //jsr do_fcircles
-
+    jsr do_lines2
+    jsr do_tiny_lines
+    jsr do_tiny_lines2
+    jsr do_lines
+    jsr do_circles
+    jsr do_fcircles
+    
     poke8_(VIC.BoC, 14)
     setbits(CIA2.base, %00000011)
     lda tmp1        
