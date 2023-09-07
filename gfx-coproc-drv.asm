@@ -5,23 +5,24 @@ BasicUpstart2(main_entry)
 
 #define CLEAR
 
-.label coproc   = $c000;
+//.label coproc   = $c000;
+.label coproc   = $e0;
 .const CLINE    = 1
 .const CCIRCLE  = 2
+.const CCIRCLE_EL = 3
 .const CEXIT    = $ff 
 .const CNOP     = 0
 tmp1: .byte $00
+tmp2: .word $0000
+ctrl_save: .byte $00
 
 .macro wait4cr(sync)
 {
-.if (sync == 1) 
-{
-!:
-    lda VIC.RASTER
-    cmp #200
-    bne !-
-}
 !w:
+    sei
+    lda $01
+    ora #%00000111
+    sta $01
     inc $d000
     dec $d000
     inc $d000
@@ -30,6 +31,10 @@ tmp1: .byte $00
     dec $d000
     inc $d000
     dec $d000
+    and #%11111100
+    sta $01
+    cli
+
     lda coproc
     beq !w-
 
@@ -85,7 +90,9 @@ do_lines:
     dec coproc+6
     dec coproc+6
     dec coproc+10
-    bne !again-
+    beq !+
+    jmp !again-
+!:
     rts
 
 do_circles:
@@ -101,7 +108,7 @@ do_circles:
     wait4cr(0)
 #if CLEAR
     poke8_(coproc, 0)
-    poke8_(coproc+2, 0)
+    poke8_(coproc+2, $61)
     poke8_(coproc+1, CCIRCLE)
     wait4cr(1)
 #endif
@@ -112,7 +119,9 @@ do_circles:
     dec coproc+6
     dec coproc+6
     dec coproc+10
-    bne !again-
+    beq !+
+    jmp !again-
+!:
     rts
 
 do_fcircles:
@@ -129,7 +138,7 @@ do_fcircles:
 
 #if CLEAR
     poke8_(coproc, 0)
-    poke8_(coproc+2, $80)
+    poke8_(coproc+2, $E1)
     poke8_(coproc+1, CCIRCLE)
     wait4cr(1)
 #endif 
@@ -139,7 +148,38 @@ do_fcircles:
     dec coproc+6
 
     dec coproc+10
-    bne !again-
+    beq !+ 
+    jmp !again-
+!:
+    rts
+
+do_felcircles:
+    // circles filled
+    poke8_(coproc+10, 50)   // iterator counter
+    poke16_(coproc+3, 0)
+    poke16_(coproc+5, 0)
+    poke16_(coproc+7, 0)
+!again:
+    poke8_(coproc, 0)
+    poke8_(coproc+2, $E1)    // #%1xxxxxxx signals filling
+    poke8_(coproc+1, CCIRCLE_EL)
+    wait4cr(0)
+
+#if CLEAR
+    poke8_(coproc, 0)
+    poke8_(coproc+2, $E1)
+    poke8_(coproc+1, CCIRCLE_EL)
+    wait4cr(1)
+#endif 
+
+    adc16(coproc+3, 5, coproc+3);
+    adc16(coproc+5, 3, coproc+5);
+    adc16(coproc+7, 1, coproc+7);
+
+    dec coproc+10
+    beq !+ 
+    jmp !again-
+!:
     rts
 
 do_lines2:
@@ -161,7 +201,9 @@ do_lines2:
     inc16(coproc+3)
     inc16(coproc+6)
     dec coproc+10
-    bne !again-
+    beq !+
+    jmp !again-
+!:
     rts
 
 do_tiny_circles:
@@ -179,7 +221,7 @@ do_tiny_circles:
 
 #if CLEAR
     poke8_(coproc, 0)
-    poke8_(coproc+2, $80)
+    poke8_(coproc+2, $E1)
     poke8_(coproc+1, CCIRCLE)
     wait4cr(1)
 #endif 
@@ -214,13 +256,39 @@ do_tiny_lines:
     sbc8(coproc+8, 1, coproc+8)
 
     dec coproc+10
-    bne !again-
-   
+    beq !+ 
+    jmp !again-
+!:
     rts
 
 do_tiny_lines2:
     poke8_(coproc+10, 16)   // iterator counter
     poke16_(coproc+3, 0)
+    poke8_(coproc+5, 0)
+    poke16_(coproc+6, 0)
+    poke8_(coproc+8, 199)
+!again:
+    poke8_(coproc, 0)
+    poke8_(coproc+2, $61)
+    poke8_(coproc+1, CLINE)
+    wait4cr(0)
+    poke8_(coproc, 0)
+    poke8_(coproc+2, $61)
+    poke8_(coproc+1, CLINE)
+    wait4cr(1)
+    inc coproc+3
+    inc coproc+6
+
+    dec coproc+10
+    beq !+ 
+    jmp !again-
+!:
+   
+    rts
+
+do_lines3:
+    poke16_(coproc+10, 320)   // iterator counter
+    poke16_(coproc+3, 319)
     poke8_(coproc+5, 0)
     poke16_(coproc+6, 0)
     poke8_(coproc+8, 199)
@@ -233,13 +301,93 @@ do_tiny_lines2:
     poke8_(coproc+2, 0)
     poke8_(coproc+1, CLINE)
     wait4cr(1)
-    inc coproc+3
-    inc coproc+6
+    dec16(coproc+3)
+    inc16(coproc+6)
 
-    dec coproc+10
-    bne !again-
+    dec16(coproc+10)
+    dec16(coproc+10)
+    cmp16_(coproc+10, 0)
+    beq !+ 
+    jmp !again-
+!:
    
     rts
+
+do_lines4:
+    poke16_(coproc+10, 320)   // iterator counter
+    poke16_(coproc+3, 0)
+    poke8_(coproc+5, 0)
+    poke16_(coproc+6, 319)
+    poke8_(coproc+8, 199)
+!again:
+    poke8_(coproc, 0)
+    poke8_(coproc+2, %01000001)
+    poke8_(coproc+1, CLINE)
+    wait4cr(0)
+    //poke8_(coproc, 0)
+    //poke8_(coproc+2, 0)
+    //poke8_(coproc+1, CLINE)
+    //wait4cr(1)
+    inc16(coproc+3)
+    inc16(coproc+3)
+    dec16(coproc+6)
+    dec16(coproc+6)
+
+    dec16(coproc+10)
+    dec16(coproc+10)
+    cmp16_(coproc+10, 0)
+    beq !+ 
+    jmp !again-
+!:
+    rts
+
+// -------------------------------------------
+loop_col:
+    poke16_(tmp2, $3fff)
+!:
+    poke8($4000, tmp2)
+    inc VIC.BoC
+    dec16(tmp2)
+    beq outx2
+    jmp !-
+outx2:
+    rts
+
+nmiisrab:
+    save_regs()
+    inc $4000 + 8
+    poke8_(CIA2.ICR, $ff)            // stop all interrupts
+    ldy CIA2.ICR
+
+    restore_regs()
+    cli
+    rti
+
+irqisrcd:
+    pha
+    lda $d019
+    ora #%10000000
+    sta $d019
+    poke8_(CIA1.ICR, $7f)            // stop all interrupts
+    lda CIA1.ICR
+    inc $4000 + 320 * 1
+
+    pla
+    rti
+
+nmiisref:
+    pha
+    inc $4000 + 8 * 5 + 320 * 3
+    lda $01
+    pha
+    ora #%000000111
+    sta $01
+    poke8_(CIA1.ICR, $7f)           // stop all interrupts to avoid constant NMIs
+    lda CIA1.ICR                    // acknowledge
+    pla
+    sta $01
+    pla
+    rti
 
 main_entry:
 
@@ -255,14 +403,33 @@ main_entry:
     sta VIC.MEM
     setbits(VIC.CR1, %00100000)     // bit 5 -> HiRes
 
-    jsr do_tiny_circles
-    jsr do_lines2
-    jsr do_tiny_lines
+    poke16_($fffe, nmiisref)        // ensure vector if kernal is switched off
+
+    sei
+    lda $01
+    sta ctrl_save
+    clearbits($01, %11111000)
+    setbits($01, %00000100)
+    cli
+
+    jsr do_lines4
+    jsr do_felcircles
     jsr do_tiny_lines2
-    jsr do_lines
+    jsr do_tiny_circles
     jsr do_circles
     jsr do_fcircles
+    jsr do_lines3
+    jsr do_lines2
+    jsr do_tiny_lines
+    jsr do_lines
     
+    sei
+    lda ctrl_save
+    sta $01
+    poke16_($fffe, STD.NMI)
+    poke8_(CIA1.ICR, $ff)           // enable all interrupts again
+    cli
+
     poke8_(VIC.BoC, 14)
     setbits(CIA2.base, %00000011)
     lda tmp1        
