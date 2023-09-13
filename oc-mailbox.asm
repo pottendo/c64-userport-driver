@@ -3,7 +3,8 @@ BasicUpstart2(main_entry)
 #import "globals.asm"
 #import "pottendos_utils.asm"
 
-#define CLEAR
+//#define CLEAR
+#define GFXON
 
 
 //| 6510/8502 address | RISC-V address        | Function                    |
@@ -15,10 +16,18 @@ BasicUpstart2(main_entry)
 .label oc_shm       = $dec0
 .label oc_interrupt = $defb
 .label oc_triggeroc = $defc
+.label coproc = oc_shm
+
+.const CLINE    = 1
+.const CCIRCLE  = 2
+.const CCIRCLE_EL = 3
+.const CEXIT    = $ff 
+.const CNOP     = 0
 
 delcnt:     .word $0000
 ctrl_save:  .byte $00
 tmp1:       .byte $00
+deltmp:     .byte $00
 
 .macro enable_roms()
 { 
@@ -40,14 +49,34 @@ tmp1:       .byte $00
     cli
 }
 
+.macro trigger_oc()
+{
+//    poke8_(oc_triggeroc, $ff);
+    poke16_(oc_triggeroc, $ffff)
+    poke16_(oc_triggeroc+2, $ffff)
+}
+
 oc_req:
+    pha
     lda oc_interrupt
-    sta VIC.BgC
+    sta VIC.BoC
+    pla
     jmp STD.IRQ
 
 do_test:
 
-    ldx #20
+    ldx #32
+!:  
+    txa
+    sta oc_shm, x
+    dex
+    bne !-
+    stx oc_shm
+
+    trigger_oc()
+    
+    rts
+
     poke16_(oc_triggeroc, $ffff)
     poke16_(oc_triggeroc+2, $ffff)
 !:
@@ -60,12 +89,42 @@ do_test:
     rts
 
 delay:
-    poke16_(delcnt, $a000)
+    poke16_(delcnt, $10)
 !:  inc VIC.BoC
     dec16(delcnt);
     bne !-
     rts
 
+do_circles:
+
+    // lines
+    poke8_(deltmp, 40)   // iterator counter
+    poke16_(coproc+3, 10)
+    poke8_(coproc+5, 100)
+    poke16_(coproc+6, 99)
+!again:
+    poke8_(coproc, 0)
+    poke8_(coproc+2, 1)
+    poke8_(coproc+1, CCIRCLE)
+    trigger_oc()
+#if CLEAR
+    poke8_(coproc, 0)
+    poke8_(coproc+2, $61)
+    poke8_(coproc+1, CCIRCLE)
+    trigger_oc()
+#endif
+
+    jsr delay
+    inc coproc+3
+    inc coproc+3
+    inc coproc+3
+    dec coproc+6
+    dec coproc+6
+    dec deltmp
+    beq !+
+    jmp !again-
+!:
+    rts
 main_entry:
 #if GFXON
     memset_($4000, $0, 8000)
@@ -83,11 +142,20 @@ main_entry:
     sei
     poke16_($0314, oc_req)
     cli
+//    jsr delay
+    //jsr do_circles
+    jsr do_test
+    jsr delay
+    jsr do_test
+    jsr delay
+    jsr do_test
+    jsr delay
+    jsr do_test
     jsr delay
     jsr do_test
 
     sei
-    //poke16_($0314, STD.IRQ)
+    poke16_($0314, STD.IRQ)
     cli
 
     poke8_(VIC.BoC, 14)
