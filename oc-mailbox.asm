@@ -28,6 +28,8 @@ delcnt:     .word $0000
 ctrl_save:  .byte $00
 tmp1:       .byte $00
 deltmp:     .byte $00
+startval:   .byte $00
+crsync:     .byte $00
 
 .macro enable_roms()
 { 
@@ -49,47 +51,55 @@ deltmp:     .byte $00
     cli
 }
 
+.macro wait4cr()
+{
+!:
+    lda VIC.BoC
+    lda crsync
+    beq !-
+}
 .macro trigger_oc()
 {
 //    poke8_(oc_triggeroc, $ff);
-    poke16_(oc_triggeroc, $ffff)
-    poke16_(oc_triggeroc+2, $ffff)
+    poke8_(crsync, 0);
+    //poke16_(oc_triggeroc, $ffff)
+    poke8_(oc_triggeroc+3, $ff)
+    wait4cr()
 }
 
 oc_req:
     pha
     lda oc_interrupt
-    sta VIC.BoC
+    inc crsync
     pla
     jmp STD.IRQ
 
 do_test:
+    poke8_(P.zpp1 , 0)
+    ldy #$20
 
-    ldx #32
+!next:
+    ldx #$3b
 !:  
     txa
+    clc 
+    adc P.zpp1
     sta oc_shm, x
     dex
     bne !-
     stx oc_shm
 
+    poke8_(oc_shm + 1, $fe) // request cr-test
     trigger_oc()
-    
-    rts
 
-    poke16_(oc_triggeroc, $ffff)
-    poke16_(oc_triggeroc+2, $ffff)
-!:
-    adc16(oc_triggeroc, $ff, oc_triggeroc)
-    sbc16(oc_triggeroc+2, $ff, oc_triggeroc + 2)
-    jsr delay
-    dex
-    bne !-
+    inc P.zpp1
+    dey
+    bne !next-
 
     rts
 
 delay:
-    poke16_(delcnt, $10)
+    poke16_(delcnt, $1000)
 !:  inc VIC.BoC
     dec16(delcnt);
     bne !-
@@ -104,9 +114,10 @@ do_circles:
     poke16_(coproc+6, 99)
 !again:
     poke8_(coproc, 0)
-    poke8_(coproc+2, 1)
+    poke8_(coproc+2, $1)
     poke8_(coproc+1, CCIRCLE)
     trigger_oc()
+    jsr delay
 #if CLEAR
     poke8_(coproc, 0)
     poke8_(coproc+2, $61)
@@ -114,17 +125,17 @@ do_circles:
     trigger_oc()
 #endif
 
-    jsr delay
-    inc coproc+3
-    inc coproc+3
-    inc coproc+3
-    dec coproc+6
-    dec coproc+6
+    //inc coproc+3
+    //inc coproc+3
+    //inc coproc+3
+    //dec coproc+6
+    //dec coproc+6
     dec deltmp
     beq !+
     jmp !again-
 !:
     rts
+
 main_entry:
 #if GFXON
     memset_($4000, $0, 8000)
@@ -142,22 +153,24 @@ main_entry:
     sei
     poke16_($0314, oc_req)
     cli
-//    jsr delay
+
+    poke8_(startval, 0)
+!next:
+    jsr do_test
     //jsr do_circles
-    jsr do_test
-    jsr delay
-    jsr do_test
-    jsr delay
-    jsr do_test
-    jsr delay
-    jsr do_test
-    jsr delay
-    jsr do_test
+    inc startval
+!:
+    jsr STD.GETIN
+    beq !-
+
+    cmp #' '
+    beq !+
+    jmp !next-
+!:
 
     sei
     poke16_($0314, STD.IRQ)
     cli
-
     poke8_(VIC.BoC, 14)
 #if GFXON
     setbits(CIA2.base, %00000011)
