@@ -17,6 +17,7 @@ BasicUpstart2(main_entry)
 .label oc_interrupt = $defb
 .label oc_triggeroc = $deff
 .label coproc = oc_shm
+//.label coproc = $c000
 
 .const CLINE    = 1
 .const CCIRCLE  = 2
@@ -53,16 +54,14 @@ crsync:     .byte $01
 .macro wait4cr()
 {
 !:
-    inc VIC.BoC         // give room by accessing I/O and see activity
-    inc VIC.BoC
-    inc VIC.BoC
-    lda crsync          // poll the sync variable
-    beq !-
+    //inc VIC.BoC         // give room by accessing I/O and see activity
+    lda oc_triggeroc //crsync          // poll the sync variable
+    bmi !-
 }
 
 .macro trigger_oc()
 {
-    poke8_(crsync, 0)
+    //poke8_(crsync, 0)
     //dec crsync
     poke8_(oc_triggeroc, $ff)   // trigger OCs ISR
     wait4cr()   // if coproc is still working, we block here, busy waiting
@@ -72,8 +71,8 @@ oc_req:
     lda oc_interrupt    // the oc driver triggers by writing $ff to trigger
     bpl !+              
     inc oc_interrupt    // why needed to ack the interrupt? read should be sufficient
-    inc crsync          // this can be polled to syncronize with finish of a co-routine
-    //inc VIC.BgC         // show something by setting background color
+    //inc crsync          // this can be polled to syncronize with finish of a co-routine
+    inc VIC.BoC         // show something by setting background color
     restore_regs()      // restore registers as needed for proper ISRs
     rti
 !:
@@ -110,14 +109,39 @@ delay:
     bne !-
     rts
 
-do_circles_s:
+do_lines3:
+    poke16_(coproc+10, 320)   // iterator counter
+    poke16_(coproc+3, 319)
+    poke8_(coproc+5, 0)
+    poke16_(coproc+6, 0)
+    poke8_(coproc+8, 199)
+!again:
+    poke8_(coproc, 0)
+    poke8_(coproc+2, 1)
+    poke8_(coproc+1, CLINE)
+    trigger_oc()
+    
+    poke8_(coproc, 0)
+    poke8_(coproc+2, 0)
+    poke8_(coproc+1, CLINE)
+    trigger_oc()
+    
+    dec16(coproc+3)
+    inc16(coproc+6)
 
-    // lines
-    poke8_(deltmp, 1)   // iterator counter
+    dec16(coproc+10)
+    dec16(coproc+10)
+    cmp16_(coproc+10, 0)
+    beq !+ 
+    jmp !again-
+!:
+   
+    rts
+do_circles:
+    poke8_(deltmp, 40)   // iterator counter
     poke16_(coproc+3, 10)
     poke8_(coproc+5, 100)
     poke16_(coproc+6, 99)
-do_circles:
 !again:
     poke8_(coproc, 0)
     poke8_(coproc+2, $1)
@@ -136,6 +160,7 @@ do_circles:
     inc coproc+3
     dec coproc+6
     dec coproc+6
+
     dec deltmp
     beq !+
     jmp !again-
@@ -167,16 +192,15 @@ main_entry:
     cli
 
     poke8_(startval, 0)
-    //jsr do_circles_s
 
 !next:
-    jsr do_test
+    //jsr do_test
     //jsr do_circles
-    inc startval
-
-    lda coproc+3
-    adc startval
-    sta coproc+3
+    //jsr do_lines3
+    //inc startval
+    //lda coproc+3
+    //adc startval
+    //sta coproc+3
    
 !:
     jsr STD.GETIN
