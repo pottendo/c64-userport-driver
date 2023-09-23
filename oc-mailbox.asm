@@ -3,7 +3,7 @@ BasicUpstart2(main_entry)
 #import "globals.asm"
 #import "pottendos_utils.asm"
 
-//#define CLEAR
+#define CLEAR
 #define GFXON
 
 
@@ -28,8 +28,8 @@ BasicUpstart2(main_entry)
 delcnt:     .word $0000
 ctrl_save:  .byte $00
 tmp1:       .byte $00
-deltmp:     .byte $00
-startval:   .byte $00
+deltmp:     .word $00
+startval:   .word $00
 crsync:     .byte $01
 
 .macro enable_roms()
@@ -54,7 +54,7 @@ crsync:     .byte $01
 .macro wait4cr()
 {
 !:
-    //inc VIC.BoC         // give room by accessing I/O and see activity
+    inc VIC.BoC         // give room by accessing I/O and see activity
     lda oc_triggeroc //crsync          // poll the sync variable
     bmi !-
 }
@@ -102,15 +102,22 @@ do_test:
 
     rts
 
+do_test2:
+
+    memset($4000, startval, 8000)
+    memset($7c00, startval, $3f8)
+    memset($d800, startval, 1000)
+    rts
+
 delay:
-    poke16_(delcnt, $1000)
-!:  inc VIC.BoC
+    poke16_(delcnt, $0fff)
+!:  //inc VIC.BoC
     dec16(delcnt);
     bne !-
     rts
 
 do_lines3:
-    poke16_(coproc+10, 320)   // iterator counter
+    poke16_(deltmp, 320)   // iterator counter
     poke16_(coproc+3, 319)
     poke8_(coproc+5, 0)
     poke16_(coproc+6, 0)
@@ -131,26 +138,28 @@ do_lines3:
 
     dec16(coproc+10)
     dec16(coproc+10)
-    cmp16_(coproc+10, 0)
+    cmp16_(deltmp, 0)
     beq !+ 
     jmp !again-
 !:
    
     rts
 do_circles:
-    poke8_(deltmp, 40)   // iterator counter
-    poke16_(coproc+3, 10)
+    poke8_(deltmp, 20)   // iterator counter
+    poke16_(coproc+3, 50)
     poke8_(coproc+5, 100)
-    poke16_(coproc+6, 99)
+    poke16_(coproc+6, 49)
 !again:
+    jsr delay
     poke8_(coproc, 0)
     poke8_(coproc+2, $1)
     poke8_(coproc+1, CCIRCLE)
     trigger_oc()
+    jsr delay
  
 #if CLEAR
     poke8_(coproc, 0)
-    poke8_(coproc+2, $61)
+    poke8_(coproc+2, $0)
     poke8_(coproc+1, CCIRCLE)
     trigger_oc()
 #endif
@@ -191,22 +200,23 @@ main_entry:
     poke16_($0318, nmi_isr)
     cli
 
-    poke8_(startval, 0)
+    poke16_(startval, 0)
 
 !next:
-    //jsr do_test
-    //jsr do_circles
-    //jsr do_lines3
-    //inc startval
-    //lda coproc+3
-    //adc startval
-    //sta coproc+3
    
 !:
     jsr STD.GETIN
     beq !-
     cmp #' '
     beq !+
+    //jsr do_test2
+    jsr do_test
+    //jsr do_circles
+    //jsr do_lines3
+    inc startval
+    //lda coproc+3
+    //adc startval
+    //sta coproc+3
     jmp !next-
 !:
     sei
