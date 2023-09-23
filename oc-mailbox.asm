@@ -107,6 +107,11 @@ do_test2:
     memset($4000, startval, 8000)
     memset($7c00, startval, $3f8)
     memset($d800, startval, 1000)
+
+    poke8_(coproc + 1, 0)
+        poke8_(oc_triggeroc, $ff)   // trigger OCs ISR
+    //trigger_oc()
+    
     rts
 
 delay:
@@ -197,10 +202,10 @@ main_entry:
 #endif
     sei
     poke16_($0314, oc_req)
-    poke16_($0318, nmi_isr)
+    //poke16_($0318, nmi_isr)
     cli
 
-    poke16_(startval, 0)
+    poke16_(startval, 1)
 
 !next:
    
@@ -209,8 +214,8 @@ main_entry:
     beq !-
     cmp #' '
     beq !+
-    //jsr do_test2
-    jsr do_test
+    jsr do_test2
+    //jsr do_test
     //jsr do_circles
     //jsr do_lines3
     inc startval
