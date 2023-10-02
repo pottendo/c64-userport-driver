@@ -3,8 +3,8 @@ BasicUpstart2(main_entry)
 #import "globals.asm"
 #import "pottendos_utils.asm"
 
-#define CLEAR
-#define GFXON
+//#define CLEAR
+//#define GFXON
 
 
 //| 6510/8502 address | RISC-V address        | Function                    |
@@ -16,6 +16,9 @@ BasicUpstart2(main_entry)
 .label oc_shm       = $dec0
 .label oc_interrupt = $defb
 .label oc_triggeroc = $deff
+.label oc_intc      = $de40
+.label oc_irqenable = $de41
+.label oc_nmienable = $de42
 .label coproc = oc_shm
 //.label coproc = $c000
 
@@ -66,17 +69,6 @@ crsync:     .byte $01
     poke8_(oc_triggeroc, $ff)   // trigger OCs ISR
     wait4cr()   // if coproc is still working, we block here, busy waiting
 }
-
-oc_req:
-    lda oc_interrupt    // the oc driver triggers by writing $ff to trigger
-    bpl !+              
-    inc oc_interrupt    // why needed to ack the interrupt? read should be sufficient
-    //inc crsync          // this can be polled to syncronize with finish of a co-routine
-    inc VIC.BoC         // show something by setting background color
-    restore_regs()      // restore registers as needed for proper ISRs
-    rti
-!:
-    jmp STD.IRQ
 
 do_test:
     poke8_(oc_shm + 1, $fe) // $fe at oc_shm + 1 requests the test coroutine
@@ -143,6 +135,8 @@ do_lines3:
 
     dec16(coproc+10)
     dec16(coproc+10)
+
+    dec16(deltmp)
     cmp16_(deltmp, 0)
     beq !+ 
     jmp !again-
@@ -155,12 +149,12 @@ do_circles:
     poke8_(coproc+5, 100)
     poke16_(coproc+6, 49)
 !again:
-    jsr delay
+    //jsr delay
     poke8_(coproc, 0)
-    poke8_(coproc+2, $1)
+    poke8_(coproc+2, $c1)
     poke8_(coproc+1, CCIRCLE)
     trigger_oc()
-    jsr delay
+    //jsr delay
  
 #if CLEAR
     poke8_(coproc, 0)
@@ -181,8 +175,29 @@ do_circles:
 !:
     rts
 
+irq_isr:
+    lda oc_intc         // the oc driver triggers by writing $ff to trigger
+    and oc_irqenable
+    beq !+         
+    lda #%00000001
+    sta oc_intc         // clear interrupt state
+    //inc crsync          // this can be polled to syncronize with finish of a co-routine
+    inc VIC.BoC         // show something by setting background color
+    restore_regs()      // restore registers as needed for proper ISRs
+    rti
+!:
+    jmp STD.IRQ
+
 nmi_isr:
+    pha
+    lda oc_intc         // the oc driver triggers by writing $ff to trigger
+    and oc_nmienable
+    beq !+         
+    lda #%00000001
+    sta oc_intc         // clear interrupt state
+    //inc crsync          // this can be polled to syncronize with finish of a co-routine
     inc VIC.BgC
+!:  pla
     cli
     rti
 
@@ -201,8 +216,10 @@ main_entry:
     setbits(VIC.CR1, %00100000)     // bit 5 -> HiRes
 #endif
     sei
-    poke16_($0314, oc_req)
+    poke16_($0314, irq_isr)
     //poke16_($0318, nmi_isr)
+    setbits(oc_irqenable, %00000001)
+    //setbits(oc_nmienable, %00000001)
     cli
 
     poke16_(startval, 1)
@@ -214,10 +231,10 @@ main_entry:
     beq !-
     cmp #' '
     beq !+
-    jsr do_test2
-    //jsr do_test
-    //jsr do_circles
-    //jsr do_lines3
+    //jsr do_test2
+    jsr do_test
+    jsr do_circles
+    jsr do_lines3
     inc startval
     //lda coproc+3
     //adc startval
@@ -226,6 +243,9 @@ main_entry:
 !:
     sei
     poke16_($0314, STD.IRQ)
+    poke16_($0318, STD.NMI)
+    clearbits(oc_irqenable, %11111110)
+    clearbits(oc_nmienable, %11111110)
     cli
     poke8_(VIC.BoC, 14)
 #if GFXON
