@@ -4,7 +4,7 @@ BasicUpstart2(main_entry)
 #import "pottendos_utils.asm"
 
 
-nmi_isr:
+nmi_isr2:
     tsx
     inc VIC.BgC
     lda #>other
@@ -16,6 +16,12 @@ nmi_isr:
     cli
     rti
 
+nmi_isr:
+    pla
+    lda #0
+    pha
+    cli
+    rti
 other:
     pla
     pla
@@ -25,13 +31,14 @@ other:
 
 main_entry:
     sei
-    //poke16_($0314, oc_req)
     poke16_($0318, nmi_isr)
     cli
 
+    lda #$ff
 !next:
-    jmp !next-
+    bmi !next-
    
+    inc VIC.BoC
 !:
     jsr STD.GETIN
     beq !-
