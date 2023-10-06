@@ -36,6 +36,7 @@ main_entry:
 
     lda #$ff
 !next:
+    sta $ff
     bmi !next-
    
     inc VIC.BoC
