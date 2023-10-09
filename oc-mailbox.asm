@@ -204,20 +204,21 @@ nmi_isr2:
 nmi_isr:
     pha
     lda $01
-    sta $61
+    pha
     lda #$37
     sta $01
+
     lda oc_intc
     and oc_nmienable    // check if Orangecart mailbox NMI
     beq @out
     lda #$1
     sta $de40           // ack NMI
     inc $d020
-    lda $defb
     lda #0
     sta $62
+
 @out:
-    lda $61
+    pla
     sta $01
     pla
     cli                 // re-enable interrupts
