@@ -33,6 +33,7 @@ tmp1:       .byte $00
 deltmp:     .word $00
 startval:   .word $00
 crsync:     .byte $01
+taddrp:     .word $1000
 
 .macro enable_roms()
 { 
@@ -71,21 +72,24 @@ crsync:     .byte $01
 }
 
 do_test:
-    poke8_(oc_shm + 1, $fe) // $fe at oc_shm + 1 requests the test coroutine
     poke8_(P.zpp1 , 0)      // P.zzp1 is a zeropage tmp address
     ldy #$20                // loop 32x
 
 !next:
-    ldx #$3a                // fill the entire mailbox shm
+    ldx #$3a                // fill the entire mailbox shm after addr + len (total 6b)
 !:  
     txa
     clc 
     adc P.zpp1              // add something
-    sta oc_shm, x           // put in in the oc_shm
+_beef1:
+    sta $beef, x           // put in in the oc_shm
     dex
     bne !-
-    stx oc_shm              // also fill byte 0 (always with #0)
-    poke8_(oc_shm + 1, $fe) // request cr-test, as oc_shm + 1 was overritten
+_beef2:
+    stx $beef              // also fill byte 0 (always with #0)
+    poke8_(oc_shm + 1, $fe) // request cr-test
+    poke16(oc_shm + 2, taddrp)  // c64 address where oc shall read from
+    poke16_(oc_shm + 4, $3b)   // read len (<shm size)
     trigger_oc()            // trigger oc by issuing an interrupt and busy wait for finish
 
     inc P.zpp1              // change for the next iteration
@@ -255,9 +259,16 @@ main_entry:
     cmp #' '
     beq !+
     //jsr do_test2
+    //poke16_(_beef1+1, oc_shm)
+    //poke16_(_beef2+1, oc_shm)
+    //poke16_(taddrp, oc_shm)
+    //jsr do_test
+    poke16_(_beef1+1, $1000)
+    poke16_(_beef2+1, $1000)
+    poke16_(taddrp, $1000)
     jsr do_test
-    jsr do_circles
-    jsr do_lines3
+    //jsr do_circles
+    //jsr do_lines3
     inc startval
     //lda coproc+3
     //adc startval
