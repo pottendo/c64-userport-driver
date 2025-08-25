@@ -84,7 +84,7 @@ cmd5:
     print(str.inputnumber)
     rnum(cmd_args)
     sta loopc
-    poke16_(cmd_args, (1024 * 4) - 1)
+    poke16_(cmd_args, 8000) //(1024 * 4) - 1)
 !:  jsr dump3
     jsr delay
     dec loopc
