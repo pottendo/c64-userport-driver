@@ -30,6 +30,7 @@
     lda parport.read_pending    // busy wait until read is completed
     bne *-3
 }
+
 // dest: addr, len: addr
 .macro uport_read(dest, len)
 {
@@ -38,10 +39,8 @@
     lda #(parport.nread - parport.jm - 2)
     sta parport.jm + 1          // modify operand of ISR branch to
     jsr parport.start_isr       // launch interrupt driven read
-!:
-    ldx parport.read_pending    // busy wait until read is completed
-    bne !-
-    inc VIC.BoC
+    lda parport.read_pending    // busy wait until read is completed
+    bne *-3
 }
 
 .macro uport_lread(dest)
@@ -61,7 +60,7 @@
     jsr parport.sync_read
 }
 
-// dest: addr, lin in x-reg
+// dest: addr, len in x-reg
 .macro uport_sread_f(dest)
 {
     poke16_(parport._rf + 1, dest)   
