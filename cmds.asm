@@ -60,9 +60,16 @@ dump1:
 do_rcv:
     uport_read(gl.dest_mem, cmd_args)
     rts
-read:
+cmdread:
     lda #$03
-    jmp dump1
+    jsr prep_cmd
+    ldx #6
+    uport_write_f(cmd_lit)
+    uport_sread(gl.dest_mem, cmd_args)
+    delay(16)
+    roms_off()
+    uport_write(gl.dest_mem, cmd_args) // dump back what we read
+    roms_on()
     rts
 mandel:
     lda #$04
@@ -123,7 +130,7 @@ cmd_start:
 cmd_init:   .text "INIT"        /* INIT<1|0> gfx on or off */
 cmd_sndstr: .text "ECHO"        /* ECHO<addr> */
 cmd_dump1:  .text "DUM1"        /* DUM1<len> */
-cmd_read:   .text "READ"        
+cmd_read:   .text "READ"        /* READ<len> read from ESP and dump back*/
 cmd_mandel: .text "MAND"        /* MAND<16bx8by> */
 cmd_dump2:  .text "DUM2"        /* DUM2<len> */
 cmd_irc:    .text "IRC_"        /* IRC_ */

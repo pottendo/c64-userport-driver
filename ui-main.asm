@@ -74,7 +74,9 @@ cmd2:
     jsr dump1
     rts
 cmd3:
-    wstring(0, 20, cmd3_)
+    print(str.inputnumber)
+    rnum(cmd_args)
+    jsr cmdread
     rts
 cmd4:
     show_screen(1, str.screen1)
@@ -398,6 +400,8 @@ screen1:
 .text "N) ACCEL. ARITHMETICS TEST"
 .byte $0d
 .text "P) PLOT TEST"
+.byte $0d
+.text "M) T-MC"
 .byte $0d
 .text "R) RVCop64"
 .byte $0d

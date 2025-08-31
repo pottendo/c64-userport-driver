@@ -38,8 +38,10 @@
     lda #(parport.nread - parport.jm - 2)
     sta parport.jm + 1          // modify operand of ISR branch to
     jsr parport.start_isr       // launch interrupt driven read
-    lda parport.read_pending    // busy wait until read is completed
-    bne *-3
+!:
+    ldx parport.read_pending    // busy wait until read is completed
+    bne !-
+    inc VIC.BoC
 }
 
 .macro uport_lread(dest)
@@ -202,11 +204,11 @@ nread:
     inc buffer + 1
 !:
     cmp16(buffer, len) 
-    bcc out
+    bcc outnread
     uport_stop()
     poke8_(read_pending, $00)
-
-out:
+    
+outnread:
     clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
 #if HANDLE_MEM_BANK
     pla         // restore mem layout
@@ -229,7 +231,7 @@ rt4:sbc $beef       // modified to point to ccgms
     php
     jsr rindoff
     plp
-    bcc out         // enough room in buffer
+    bcc outnread    // enough room in buffer
     //poke8_(VIC.BoC, RED)             // show wer're blocking
     clearbits(CIA2.PORTA, %11111011) // clear PA2 to low to acknowledge last byte
     ora #%00000100

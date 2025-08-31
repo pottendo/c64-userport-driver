@@ -6,3 +6,10 @@ main.dbg
 main.prg
 ccgms-2021.prg
 c64-userport-driver-master.zip
+*.sym
+*.dbg
+*.prg
+*.vs
+*.d64
+buildlog.txt
+

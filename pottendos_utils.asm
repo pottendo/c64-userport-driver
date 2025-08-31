@@ -579,6 +579,25 @@ rep:
     bne !-
 }
 
+delcnter: .word $00ff
+
+.macro delay(n)
+{
+    .if (n == 0)
+    {   
+        .error "delay with 0 length"
+    }
+    pha
+    php
+    poke16_(delcnter, n)
+!:  dec delcnter
+    bne !-
+    dec delcnter + 1
+    bne !-
+    plp
+    pla
+}
+
 // Spr# 0-7, "on"/"off"
 .macro sprite(sprno, a, b)
 {
