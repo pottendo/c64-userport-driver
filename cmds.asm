@@ -66,7 +66,7 @@ cmdread:
     ldx #6
     uport_write_f(cmd_lit)
     uport_sread(gl.dest_mem, cmd_args)
-    delay(16)
+    delay(2)
     roms_off()
     uport_write(gl.dest_mem, cmd_args) // dump back what we read
     roms_on()

@@ -590,10 +590,14 @@ delcnter: .word $00ff
     pha
     php
     poke16_(delcnter, n)
-!:  dec delcnter
+!:  inc VIC.BoC
+    dec delcnter
     bne !-
+    lda delcnter + 1
+    beq !+
     dec delcnter + 1
-    bne !-
+    jmp !-
+!:
     plp
     pla
 }
