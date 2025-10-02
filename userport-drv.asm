@@ -405,6 +405,72 @@ msg_cnt:
     restore_regs()
     rti
 
+pollportB:
+    poke8_(CIA2.SDR, $ff)
+    poke8_(CIA2.DIRB, $00)          // direction bit 0 -> input
+    setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
+    ldy #$00
+    sty $0400
+    sty $0401
+    sty $0402
+    sty $0403
+    sty $0404
+    sty $0405
+    sty $0406
+    sty $0407
+
+!nc_f:
+    inc VIC.BoC    // just to show we're polling
+    clearbits(CIA2.PORTA, %11111011)  // set PA2 to low to signal we're ready to receive
+!:  
+    lda CIA2.ICR
+    and #%00010000
+    beq !-
+    setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy _f
+    lda CIA2.PORTB
+    pha
+    and #%00000001
+    beq !+
+    inc $0400
+!:  pla
+    pha
+    and #%00000010
+    beq !+
+    inc $0401
+!:  pla
+    pha
+    and #%00000100
+    beq !+
+    inc $0402
+!:  pla
+    pha
+    and #%00001000
+    beq !+
+    inc $0403
+!:  pla
+    pha
+    and #%00010000
+    beq !+
+    inc $0404
+!:  pla
+    pha
+    and #%00100000
+    beq !+
+    inc $0405
+!:  pla
+    pha
+    and #%01000000
+    beq !+
+    inc $0406
+!:  pla
+    pha
+    and #%10000000
+    beq !+
+    inc $0407
+!:  pla
+    jmp !nc_f-
+
+
 rindon:
     sprite(1, "on", -1)
     rts

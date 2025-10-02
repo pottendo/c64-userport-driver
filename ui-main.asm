@@ -121,6 +121,8 @@ cmd8:
     rts
 
 cmdterminal:
+    jsr parport.pollportB
+#if LATER
     print(str.inputtext)
     uport_lread($0680)
 
@@ -134,6 +136,7 @@ cmdterminal:
 !:
     uport_stop()
     show_screen(1, str.screen1)
+#endif    
     rts
     
 cmdirc:
