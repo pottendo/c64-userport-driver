@@ -30,6 +30,46 @@
 }
 
 .namespace STD {
+#if C128
+    .label IRQ = $fa65
+    .label NMI = $fa40      
+    .label CONTNMI = $ff33 //$fa4b  
+    .label IRQ_VEC = $314
+    .label NMI_VEC = $318
+    .label BSOUT = $ffd2
+    .label PLOT = $fff0
+    .label PRTSTR = $55e2
+    .label GETIN = $ffe4
+    .label BASIN = $ffcf
+    .label PI = $78fe
+    .label FAC1 = $63
+    .label FAC2 = $6a
+    .label FAC1SIGN = $68
+    .label LFAC1 = $8bd4    // load FAC1 from constant at address a/y
+    .label LFAC2 = $8a89    // load FAC2 from constant at address a/y
+    .label SFAC1 = $8c00    // store FAC1 to address x/y
+    .label LINT = $af03     // load FAC1 from y/a value
+    .label LSACC = $8c68    // 8bit SIGNED acc -> FAC1
+    .label LUY = $84d4      // 8bit UNSIGNED Y -> FAC1
+    .label PRLFAC1 = $84e5  // needs to be callsed before LSYA!
+    .label LSYA = $8c70     // 16bit SIGNED y/a -> FAC1
+    .label F2INT = $8cc7    // F2INT -> BigEndian $68-$65
+    .label FAC2STR = $8e42  // FAC1 -> $100
+    .label FDIV = $8b4c     // div mem a/y by FAC1
+    .label FMUL = $8a08     // mul mem a/y with FAC1
+    .label FADD = $8a45     // add mem a/y with FAC1
+    .label FSUB = $882e     // sub mem a/y with FAC1
+    .label SIN = $9410      // SIN(FAC1), in Radians
+
+    .label MMU = $ff00
+    .label MMURAW = $d500
+    .label MMU_RAMCFG = MMURAW + 6
+    .label MMU_CLR1 = MMU + 1
+    .label MMU_CLR2 = MMU + 2
+    .label MMU_CLR3 = MMU + 3
+    .label MMU_CLR4 = MMU + 4
+
+#else
     .label IRQ = $ea31
     .label NMI = $fe47      // orignal address: $fe47, $fe56
     .label CONTNMI = $fe56  // jmp after save regs and some CIA1 handling
@@ -38,12 +78,14 @@
     .label BSOUT = $ffd2
     .label CLSCR = $e544
     .label PLOT = $fff0
+    .label PRTSTR = $ab1e
     .label GETIN = $ffe4
     .label BASIN = $ffcf
     .label PI = $aea8
     .label FAC1 = $61
     .label FAC2 = $69
-    .label LFAC1 = $bba2    // load FAC1 from a/y
+    .label FAC1SIGN = $66
+    .label LFAC1 = $bba2    // load constant FAC1 from a/y
     .label SFAC1 = $bbd4    // store FAC1 to x/y
     .label LINT = $b391     // load FAC1 from y/a
     .label LSACC = $bc3c    // 8bit SIGNED acc -> FAC1
@@ -56,8 +98,8 @@
     .label FADD = $b867     // add mem a/y with FAC1
     .label FSUB = $b850     // sub mem a/y with FAC1
     .label SIN = $e26b      // SIN(FAC1), in Radians
+#endif
 }
-
 .namespace VIC {
     .label base = $d000
     .label MEM = base + $18
@@ -73,6 +115,9 @@
     .label BoC = base + $20
     .label BgC = base + $21
     .label SprColBase = base + $27
+#if C128
+    .label MHZ = base + $30
+#endif    
 }
 
 // utility functions
@@ -110,7 +155,8 @@ _wscreen:
 _readstr:
     ldx #$00
  _nc:
-    jsr $E112
+    //jsr $E112
+    jsr STD.BASIN
     cmp #$0d
     beq !+
 _rdst:
@@ -178,6 +224,23 @@ ex:
     ldy P.zpp1 + 1
     rts
 
+#if C128
+clrscreen:
+    lda #$20
+    ldx #0
+!:
+    sta $0400,x
+    sta $0500,x
+    sta $0600,x
+    sta $0700,x
+    inx
+    bne !-
+    rts
+#else
+clrscreen:
+    jsr STD.CLSCR
+    rts
+#endif
 digitseen:  .byte $00
 dezcount:   .byte $00
 binaries:   .byte $01, $02, $04, $08, $10, $20, $40, $80
@@ -193,9 +256,17 @@ tmp:        .word $0000
     pha
     tya
     pha
+#if C128
+    lda $ff00
+    pha
+#endif    
 } 
 
 .macro restore_regs() {
+#if C128
+    pla
+    sta $ff00
+#endif
     pla
     tay
     pla
@@ -453,7 +524,7 @@ zero:
 .macro show_screen(clscr, what) 
 {
     .if (clscr == 1) {
-        jsr STD.CLSCR
+        jsr P.clrscreen
     }
     lda #<what
     sta P.zpp1
@@ -755,6 +826,28 @@ clhb:
     }
 }
 
+
+#if C128
+.macro roms_off() 
+{
+    sei
+    poke8_(STD.MMU, $0c)    // $8000-$bfff RAM, rest standard
+    cli
+}
+.macro roms_on() 
+{
+    sei
+    poke8_(STD.MMU, 0)
+    cli
+}
+
+.macro set2Mhz(what)
+{
+    lda #what
+    sta VIC.MHZ
+}
+
+#else // C64 et al.
 .macro roms_off()
 {
     sei
@@ -774,3 +867,5 @@ clhb:
     cli
    
 }
+.macro set2Mhz(what){}
+#endif

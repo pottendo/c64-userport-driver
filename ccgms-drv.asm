@@ -13,7 +13,7 @@
 #import "userport-drv.asm"
 
 
-.label ccgms_ext_entry = $6700  // pointers to extension entries: 
+.label ccgms_ext_entry = $6800  // pointers to extension entries: 
                                 // +0 -> soft80_init
                                 // +2 -> soft80_out
                                 // +4 -> soft80_toggle4080

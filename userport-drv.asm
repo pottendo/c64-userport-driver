@@ -126,11 +126,11 @@ init:
     poke8_(CIA2.SDR, $ff)           // send %11111111, to start C64 in read mode
 
     //sprite setup for IRC VIC config
-    sprite_sel_($0400, $0340, 1, 0)
-    sprite_sel_($0400, $0340, 2, 1)
+    sprite_sel_($0400, gl.spr_buf, 1, 0)
+    sprite_sel_($0400, gl.spr_buf + 128, 2, 1)
     sprite(1, "color_", LIGHT_GREEN)
     sprite(2, "color_", LIGHT_RED)
-    memcpy($0340, sprstart, sprend - sprstart) // move sprite data to matching vic address
+    memcpy(gl.spr_buf, sprstart, sprend - sprstart) // move sprite data to matching vic address
     sprite_pos_(1, 324, 50)
     sprite_pos_(2, 324, 50)
     poke16_(rin+1, rindon)
@@ -161,7 +161,7 @@ rin:
 
 stop_isr:
     poke8_(CIA2.ICR, $7f)            // stop all interrupts
-    poke16_(STD.NMI_VEC, STD.CONTNMI)    // reroute NMI
+    poke16_(STD.NMI_VEC, STD.NMI)    // reroute NMI to original handler
 #if HANDLE_MEM_BANK
     poke16_($fffa, STD.NMI_VEC)
 #endif
@@ -172,8 +172,10 @@ rif:
     rts
     
 flag_isr:
-    sei
+    //sei
+#if !C128    
     save_regs()
+#endif    
 #if HANDLE_MEM_BANK
     lda $01
     pha               // save mem layout
@@ -213,7 +215,8 @@ outnread:
     pla         // restore mem layout
     sta $01
 #endif
-    restore_regs()
+    //restore_regs()
+    jmp STD.CONTNMI
     rti
 
 loopread:
@@ -409,15 +412,15 @@ pollportB:
     poke8_(CIA2.SDR, $ff)
     poke8_(CIA2.DIRB, $00)          // direction bit 0 -> input
     setbits(CIA2.DIRA, %00000100)   // PortA r/w for PA2
-    ldy #$00
-    sty $0400
-    sty $0401
-    sty $0402
-    sty $0403
-    sty $0404
-    sty $0405
-    sty $0406
-    sty $0407
+    ldy #$01
+    sty $0400+32
+    sty $0401+32
+    sty $0402+32
+    sty $0403+32
+    sty $0404+32
+    sty $0405+32
+    sty $0406+32
+    sty $0407+32  
 
 !nc_f:
     inc VIC.BoC    // just to show we're polling
@@ -431,43 +434,59 @@ pollportB:
     pha
     and #%00000001
     beq !+
-    inc $0400
-!:  pla
+    inc $0400+32
+    jmp *+6
+!:  dec $0400+32
+    pla
     pha
     and #%00000010
     beq !+
-    inc $0401
-!:  pla
+    inc $0401+32
+    jmp *+6
+!:  dec $0401+32
+    pla
     pha
     and #%00000100
     beq !+
-    inc $0402
-!:  pla
+    inc $0402+32
+    jmp *+6
+!:  dec $0402+32
+    pla
     pha
     and #%00001000
     beq !+
-    inc $0403
-!:  pla
+    inc $0403+32
+    jmp *+6
+!:  dec $0403+32
+    pla
     pha
     and #%00010000
     beq !+
-    inc $0404
-!:  pla
+    inc $0404+32
+    jmp *+6
+!:  dec $0404+32
+    pla
     pha
     and #%00100000
     beq !+
-    inc $0405
-!:  pla
+    inc $0405+32
+    jmp *+6
+!:  dec $0405+32
+    pla
     pha
     and #%01000000
     beq !+
-    inc $0406
-!:  pla
+    inc $0406+32
+    jmp *+6
+!:  dec $0406+32
+    pla
     pha
     and #%10000000
     beq !+
-    inc $0407
-!:  pla
+    inc $0407+32
+    jmp *+6
+!:  dec $0407+32
+    pla
     jmp !nc_f-
 
 

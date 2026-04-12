@@ -5,7 +5,7 @@
     poke16_(screen.cb_rf + 1, rest_fun)  // modify operand
     poke8_(screen.line2, l2)
     poke8_(screen.line1, l1)
-    //jsr screen.init_raster
+    jsr screen.init_raster
 }
 
 .macro close_screen() {
@@ -18,7 +18,8 @@ screen: {
 line1:    .byte $00
 line2:    .byte $00
 scrstate: .byte $00
-
+colsave:  .byte $00
+colsave2: .byte $00
 // init / close screen
 toggle_screen:
 
@@ -26,6 +27,7 @@ toggle_screen:
     eor #$ff
     sta scrstate
     beq !+
+    poke8(colsave, VIC.BgC)
     poke8_(VIC.BgC, BLACK)
     sprite(0, "on", -1)
     sprite(7, "on", -1)
@@ -37,7 +39,7 @@ toggle_screen:
     sprite(0, "off", -1)
     sprite(7, "off", -1)
     jsr rest
-    poke8_(VIC.BgC, BLUE)
+    poke8(VIC.BgC, colsave)
     rts
 
 toggle_mc:
@@ -82,8 +84,9 @@ cb_mf:
     lda line2
     sta VIC.RASTER
 out:
-    restore_regs()
-    rti
+    //restore_regs()
+    //rti
+    jmp STD.IRQ
 l2:
 cb_rf:
     jsr $beef       // operand modified during initialization
@@ -93,16 +96,17 @@ cb_rf:
 
 tmp1: .byte $00
 /* callbacks to set vic mode */
-mode: 
-    clearbits(CIA2.base, %11111100) // select VIC bank $4000-$7FFF
+mode:
+    clearbits(CIA2.base, %11111100) // select VIC bank2 $8000-$BFFF
     setbits(CIA2.base, %00000001)
-    lda VIC.MEM                     // move VIC screen to base + $0000
+    lda VIC.MEM                     // move VIC screen to base + $2000
     sta tmp1
     and #%00000111
-    ora #%00001000 // screen to base + $3C00
+    ora #%00001000 // screen to base + $2000 (Hires, bit3)
     sta VIC.MEM
     setbits(VIC.CR1, %00100000)     // bit 5 -> HiRes
     setbits(VIC.CR2, %00010000)     // bit 4 -> MC
+    poke8(colsave2, VIC.BoC)
     poke8_(VIC.BoC, 0)
     sprite(0, "color", WHITE)
     sprite(7, "color", WHITE)
@@ -112,11 +116,12 @@ mode:
     sprite(7, "expy", "on")
     rts
 rest: 
-    poke8_(VIC.BoC, 14)
+    poke8(VIC.BoC, colsave2)
     setbits(CIA2.base, %00000011)
-    lda tmp1        
-    //and #%11110000
-    //ora VIC.MEM
+    //lda tmp1        
+    lda VIC.MEM
+    and #%11110111
+    ora #%00010000
     sta VIC.MEM
     clearbits(VIC.CR1, %11011111)
     clearbits(VIC.CR2, %11101111)

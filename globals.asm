@@ -11,5 +11,11 @@
     .label vic_base = $8000
     .label vic_videoram = vic_base + $0000 //$3c00
     .label dest_mem = vic_base + $2000
+#if C128
+    .label gfx_buf = $1300
+    .label spr_buf = $800
+#else    
     .label gfx_buf = $c000
+    .label spr_buf = $340
+#endif
 }

@@ -1,7 +1,7 @@
 #import "pottendos_utils.asm"
 #import "globals.asm"
 
-//#define NATIVE_FP
+#define NATIVE_FP
 
 .namespace gfx {
 
@@ -52,19 +52,34 @@ dbg: .text "DEBUG: "
 setup:
     // prepare PI constant
     wstring(0, 20, dbg)
-    ldy #<80
-    lda #>80
-    jsr STD.LINT
 
     lda #<STD.PI
     ldy #>STD.PI
+    jsr STD.LFAC1
+    jsr STD.FAC2STR
+    jsr STD.PRTSTR
+    lda #'X'
+    jsr STD.BSOUT
+
+    ldy #<80
+    lda #>80
+_stop:
+    lda #<STD.PI
+    ldy #>STD.PI
+#if C128    
+    jsr STD.LFAC2
+#endif    
     jsr STD.FDIV
+    jsr STD.FAC2STR
+    jsr STD.PRTSTR
+    lda #'Z'
+
     ldx #<pi80th
     ldy #>pi80th
     jsr STD.SFAC1
     memcpy_f(pi80th_FLPT, STD.FAC1, 6)  // store also FLPT format to avoid another converion need
     jsr STD.FAC2STR
-    jsr $ab1e
+    jsr STD.PRTSTR
 
     ldy #100    // initialze scale with 100
     sty C2
@@ -421,6 +436,7 @@ do_cmds_entry:
 !:
     // unknown command
     inc VIC.BoC
+    //jmp do_cmds
     rts
     
 fdraw_line_x:
@@ -556,6 +572,9 @@ zweig1:
 calc_sine:
     ldy _x
     lda _x + 1
+#if C128
+    jsr STD.PRLFAC1
+#endif    
     jsr STD.LSYA
 
 #if NATIVE_FP
@@ -573,13 +592,13 @@ calc_sine:
     memcpy_f(cmd_args + 1, scale_FLPT, 6)
     jsr calc_mul_uc
 #endif
-    lda $66         // invert sign
+    lda STD.FAC1SIGN // zero page $66         // invert sign
     eor %10000000
-    sta $66
+    sta STD.FAC1SIGN
     jsr STD.F2INT
     lda C1        
     clc
-    adc $65         // F2INT -> BigEndian $68-$65
+    adc STD.FAC1 + 4 // $65         // F2INT -> BigEndian $62-$65
     tay
     rts
 
