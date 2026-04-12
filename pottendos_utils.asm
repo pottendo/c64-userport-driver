@@ -87,6 +87,8 @@
     .label FAC1 = $61
     .label FAC2 = $69
     .label FAC1SIGN = $66
+    .label MOVFAC1FAC2 = $bc0f  // move FAC1 to FAC2
+    .label MOVFAC2FAC1 = $bbfc  // move FAC2 to FAC1   
     .label LFAC1 = $bba2    // load constant FAC1 from a/y
     .label SFAC1 = $bbd4    // store FAC1 to x/y
     .label LINT = $b391     // load FAC1 from y/a
