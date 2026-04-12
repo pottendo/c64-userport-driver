@@ -45,6 +45,8 @@
     .label FAC1 = $63
     .label FAC2 = $6a
     .label FAC1SIGN = $68
+    .label MOVFAC1FAC2 = $8c3b  // move FAC1 to FAC2
+    .label MOVFAC2FAC1 = $8c28  // move FAC2 to FAC1
     .label LFAC1 = $8bd4    // load FAC1 from constant at address a/y
     .label LFAC2 = $8a89    // load FAC2 from constant at address a/y
     .label SFAC1 = $8c00    // store FAC1 to address x/y

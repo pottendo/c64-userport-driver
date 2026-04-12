@@ -49,6 +49,30 @@ _tmp1: .fill 5, 0
 dbg: .text "DEBUG: "
 .byte $00
 
+#if NOTUSED
+// working
+setup:
+    // prepare PI constant
+    wstring(0, 20, dbg)
+    ldy #<80
+    lda #>80
+    jsr STD.LINT
+
+    lda #<STD.PI
+    ldy #>STD.PI
+    jsr STD.FDIV
+    ldx #<pi80th
+    ldy #>pi80th
+    jsr STD.SFAC1
+    memcpy_f(pi80th_FLPT, STD.FAC1, 6)  // store also FLPT format to avoid another converion need
+    jsr STD.FAC2STR
+    jsr $ab1e
+
+    ldy #100    // initialze scale with 100
+    sty C2
+    rts
+#endif
+
 setup:
     // prepare PI constant
     wstring(0, 20, dbg)
@@ -56,24 +80,11 @@ setup:
     lda #<STD.PI
     ldy #>STD.PI
     jsr STD.LFAC1
-    jsr STD.FAC2STR
-    jsr STD.PRTSTR
-    lda #'X'
-    jsr STD.BSOUT
-
+    jsr STD.MOVFAC1FAC2
     ldy #<80
     lda #>80
-_stop:
-    lda #<STD.PI
-    ldy #>STD.PI
-#if C128    
-    jsr STD.LFAC2
-#endif    
+    jsr STD.LINT
     jsr STD.FDIV
-    jsr STD.FAC2STR
-    jsr STD.PRTSTR
-    lda #'Z'
-
     ldx #<pi80th
     ldy #>pi80th
     jsr STD.SFAC1
