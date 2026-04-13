@@ -1,7 +1,7 @@
 #import "pottendos_utils.asm"
 #import "globals.asm"
 
-#define NATIVE_FP
+//#define NATIVE_FP
 
 .namespace gfx {
 
@@ -603,9 +603,7 @@ calc_sine:
     memcpy_f(cmd_args + 1, scale_FLPT, 6)
     jsr calc_mul_uc
 #endif
-    lda STD.FAC1SIGN // zero page $66         // invert sign
-    eor %10000000
-    sta STD.FAC1SIGN
+    jsr STD.NEG
     jsr STD.F2INT
     lda C1        
     clc

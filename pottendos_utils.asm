@@ -62,6 +62,7 @@
     .label FADD = $8a45     // add mem a/y with FAC1
     .label FSUB = $882e     // sub mem a/y with FAC1
     .label SIN = $9410      // SIN(FAC1), in Radians
+    .label NEG = $8ffa      // negate FAC1
 
     .label MMU = $ff00
     .label MMURAW = $d500
@@ -97,11 +98,12 @@
     .label LSYA = $b391     // 16bit SIGNED y/a -> FAC1
     .label F2INT = $bc9b    // F2INT -> BigEndian $68-$65
     .label FAC2STR = $bddd  // FAC1 -> $100
-    .label FDIV = $bb0f     // div mem a/y by FAC1
+    .label FDIV = $bb12     // div mem a/y by FAC1
     .label FMUL = $ba28     // mul mem a/y with FAC1
     .label FADD = $b867     // add mem a/y with FAC1
     .label FSUB = $b850     // sub mem a/y with FAC1
     .label SIN = $e26b      // SIN(FAC1), in Radians
+    .label NEG = $bfb4      // negate FAC1
 #endif
 }
 .namespace VIC {
@@ -228,8 +230,8 @@ ex:
     ldy P.zpp1 + 1
     rts
 
-#if C128
 clrscreen:
+#if C128
     lda #$20
     ldx #0
 !:
@@ -241,7 +243,6 @@ clrscreen:
     bne !-
     rts
 #else
-clrscreen:
     jsr STD.CLSCR
     rts
 #endif

@@ -19,7 +19,7 @@ BasicUpstart2(main_entry)
 main_entry:
     jsr parport.init
     memset_(gl.dest_mem, 0, 8000)
-    memset_(gl.vic_videoram, $bc, $3f8)
+    memset_(gl.vic_videoram, screen.col, $3f8)
     //memset_($d800, $98, $200)
     //poke8_(VIC.BgC, 0)
     jsr prep_sprites
@@ -81,6 +81,7 @@ cmd3:
 cmd4:
     show_screen(1, str.screen1)
     memset_(gl.dest_mem, 0, 8000)
+    memset_(gl.vic_videoram, screen.col, 1000)
     rts
 cmd5:
     print(str.inputnumber)

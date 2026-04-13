@@ -20,6 +20,7 @@ line2:    .byte $00
 scrstate: .byte $00
 colsave:  .byte $00
 colsave2: .byte $00
+col:      .byte $bf
 // init / close screen
 toggle_screen:
 
@@ -101,11 +102,12 @@ mode:
     setbits(CIA2.base, %00000001)
     lda VIC.MEM                     // move VIC screen to base + $2000
     sta tmp1
-    and #%00000111
+    and #%00000111 // clear bits 4-7 -> VideoRAM to base + $0000-$03ff
     ora #%00001000 // screen to base + $2000 (Hires, bit3)
     sta VIC.MEM
     setbits(VIC.CR1, %00100000)     // bit 5 -> HiRes
     setbits(VIC.CR2, %00010000)     // bit 4 -> MC
+    
     poke8(colsave2, VIC.BoC)
     poke8_(VIC.BoC, 0)
     sprite(0, "color", WHITE)
@@ -120,7 +122,7 @@ rest:
     setbits(CIA2.base, %00000011)
     //lda tmp1        
     lda VIC.MEM
-    and #%11110111
+    and #%11110111  // restore bits 4-7 -> VideoRAM to base + $0400-$07ff
     ora #%00010000
     sta VIC.MEM
     clearbits(VIC.CR1, %11011111)

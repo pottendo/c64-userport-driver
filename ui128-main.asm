@@ -26,7 +26,7 @@ main_entry:
     //poke8_(STD.MMURAW + 4, $0c) // preload register normal, $8000-$bfff RAM
     jsr parport.init
     memset_(gl.dest_mem, 0, 8000)
-    memset_(gl.vic_videoram, $bc, $3f8)
+    memset_(gl.vic_videoram, screen.col, $3f8)
     memset_($d800, $98, $200)
     init_screen(50, 250, MHz1, MHz2)    
     jsr prep_sprites
@@ -105,6 +105,7 @@ cmd3:
 cmd4:
     show_screen(1, str.screen1)
     memset_(gl.dest_mem, 0, 8000)
+    memset_(gl.vic_videoram, screen.col, 1000)
     rts
 cmd5:
     print(str.inputnumber)
