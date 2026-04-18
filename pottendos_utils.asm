@@ -75,7 +75,7 @@
 #else
     .label IRQ = $ea31
     .label NMI = $fe47      // orignal address: $fe47, $fe56
-    .label CONTNMI = $fe56  // jmp after save regs and some CIA1 handling
+    .label CONTNMI = $fe5e  // jmp after save regs and some CIA1 handling
     .label IRQ_VEC = $314
     .label NMI_VEC = $318
     .label BSOUT = $ffd2
@@ -256,6 +256,7 @@ tmp:        .word $0000
 
 // macros
 .macro save_regs() {
+    inc VIC.BoC
     pha
     txa
     pha
@@ -268,6 +269,7 @@ tmp:        .word $0000
 } 
 
 .macro restore_regs() {
+    dec VIC.BoC
 #if C128
     pla
     sta $ff00
@@ -856,19 +858,21 @@ clhb:
 .macro roms_off()
 {
     sei
-    lda $01
-    pha
-    and #%11111100
-    ora #%00000010
-    sta $01
+//    lda $01
+//    pha
+//   and #%11111100
+//    ora #%00000010
+    //lda #$35    // ROMS off
+    //sta $01
     cli
 }
 
 .macro roms_on()
 {
     sei
-    pla
-    sta $01
+//  pla
+    //lda #$37    // ROMS on
+   // sta $01
     cli
    
 }

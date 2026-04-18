@@ -59,6 +59,7 @@ dump1:
     uport_write_f(cmd_lit)
 do_rcv:
     uport_read(gl.dest_mem, cmd_args)
+    memset_(cmd_lit, 0, 6)   // clear cmd for next time
     rts
 cmdread:
     lda #$03

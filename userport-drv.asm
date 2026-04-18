@@ -110,7 +110,9 @@ parport: {
                 .label buffer = $9e   // pointer to destination buffer
 len:            .word $0000     // len of requested read
 dest:           .word $0400     // destination address
-read_pending:   .byte $00       // flag if read is on-going
+//read_pending:   .byte $00       // flag if read is on-going
+                .label read_pending = $c0       // flag if read is on-going
+memecfg:        .byte $00
 rtail:          .byte $00
 pinput_pending: .byte $00       // #of msg the esp would like to send, inc'ed by NMI/Flag2
 _wtmp:          .byte $00
@@ -178,21 +180,19 @@ flag_isr:
 #endif    
 #if HANDLE_MEM_BANK
     lda $01
-    pha               // save mem layout
+    //pha               // save mem layout
+    sta memecfg
     poke8_($01, $37)  // std mem layout for I/O access
 #endif
     lda CIA2.ICR
     and #%10000 // FLAG pin interrupt (bit 4)
 jm: bne nread  // modified operand in case of loop read
 #if HANDLE_MEM_BANK
-    pla             // restore mem layout
+    //pla             // restore mem layout
+    lda memecfg
     sta $01
-    jmp STD.CONTNMI
-//    restore_regs()
-//    rti
-#else
-    jmp STD.CONTNMI
 #endif
+    jmp STD.CONTNMI
     
     // receive char now
 nread:
@@ -206,17 +206,25 @@ nread:
 !:
     cmp16(buffer, len) 
     bcc outnread
-    uport_stop()
+    jsr stop_isr // uport_stop()
     poke8_(read_pending, $00)
-    
+    tsx
+    stx $0420
 outnread:
     clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
 #if HANDLE_MEM_BANK
-    pla         // restore mem layout
+    //pla         // restore mem layout
+    lda memecfg
     sta $01
 #endif
-    //restore_regs()
-    jmp STD.CONTNMI
+    tsx
+    cpx #10
+    bcs !+
+    inc VIC.BoC
+ !:    
+    stx $0422
+    restore_regs()
+    //jmp STD.CONTNMI
     rti
 
 loopread:
