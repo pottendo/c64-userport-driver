@@ -192,6 +192,7 @@ jm: bne nread  // modified operand in case of loop read
     lda memecfg
     sta $01
 #endif
+    inc VIC.BgC
     jmp STD.CONTNMI
     
     // receive char now
@@ -210,6 +211,7 @@ nread:
     poke8_(read_pending, $00)
     tsx
     stx $0420
+    wnum(27, 0, $0420)
 outnread:
     clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
 #if HANDLE_MEM_BANK
@@ -221,6 +223,8 @@ outnread:
     cpx #10
     bcs !+
     inc VIC.BoC
+    stx P.zpp1
+    wnum(30,0,P.zpp1)
  !:    
     stx $0422
     restore_regs()

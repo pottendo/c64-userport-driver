@@ -252,6 +252,7 @@ binaries:   .byte $01, $02, $04, $08, $10, $20, $40, $80
 joy_ack:    .byte $01
 joyaction:  .byte $00
 tmp:        .word $0000
+hexliterals: .text "0123456789abcdef"
 }
 
 // macros
@@ -553,6 +554,26 @@ zero:
 {
     set_cursor(x, y)
     show_screen(0, str)
+}
+
+.macro wnum(x, y, num)
+{
+    ldx #(x + 1)
+    lda num
+    and #$0f
+    tay
+    lda P.hexliterals, y
+    sta $0400,x
+    dex
+    lda num
+    ror
+    ror
+    ror
+    ror
+    and #$0f
+    tay
+    lda P.hexliterals, y
+    sta $0400,x
 }
 
 .macro rstring(addr)
@@ -858,21 +879,21 @@ clhb:
 .macro roms_off()
 {
     sei
-//    lda $01
-//    pha
-//   and #%11111100
-//    ora #%00000010
+    lda $01
+    pha
+    and #%11111100
+    ora #%00000010
     //lda #$35    // ROMS off
-    //sta $01
+    sta $01
     cli
 }
 
 .macro roms_on()
 {
     sei
-//  pla
+    pla
     //lda #$37    // ROMS on
-   // sta $01
+    sta $01
     cli
    
 }
