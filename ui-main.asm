@@ -106,6 +106,16 @@ cmd6:
     jsr mandel
     rts
 cmd7:
+    print(str.inputnumber)
+    rnum(cmd_args)
+    jsr dump5
+    rts
+cmd8:
+    print(str.inputnumber)
+    rnum(cmd_args)
+    jsr dump2
+    rts
+cmd9:
     lda CIA2.SDR
     bne unset
     poke8_(CIA2.SDR, $ff)
@@ -114,11 +124,6 @@ cmd7:
 unset:
     poke8_(CIA2.SDR, $00)
     poke8_(VIC.BoC, RED)
-    rts
-cmd8:
-    print(str.inputnumber)
-    rnum(cmd_args)
-    jsr dump2
     rts
 
 cmdterminal:
@@ -172,7 +177,7 @@ cmdreu:
     jsr reu.test
     rts
 
-cmd9:
+cmdend:
     print(str.finished)
     pla         // clear stack from last return address
     pla
@@ -287,7 +292,7 @@ cmd_vec:
     cmdp('6', cmd6)
     cmdp('7', cmd7)
     cmdp('8', cmd8)
-    cmdp('9', cmd9)
+    cmdp('9', cmdend)
     cmdp('T', cmdterminal)
     cmdp('I', cmdirc)
     cmdp('S', cmdsyncread)
@@ -391,8 +396,8 @@ screen1:
 .byte $0d
 .text "6) MANDELBROT"
 .byte $0d
-//.text "7) TOGGLE ATN"
-//.byte $0d
+.text "7) SYNC DUM ESP->C64"
+.byte $0d
 .text "8) DUMP DATA C64->ESP"
 .byte $0d
 .text "T) TERMINAL"

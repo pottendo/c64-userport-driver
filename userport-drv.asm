@@ -209,9 +209,9 @@ nread:
     bcc outnread
     jsr stop_isr // uport_stop()
     poke8_(read_pending, $00)
-    tsx
-    stx $0420
-    wnum(27, 0, $0420)
+    //tsx
+    //stx $0420
+    //wnum(27, 0, $0420)
 outnread:
     clearbits(CIA2.PORTA, %11111011)   // clear PA2 to low to signal we're ready to receive
 #if HANDLE_MEM_BANK

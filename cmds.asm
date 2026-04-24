@@ -89,6 +89,14 @@ dump2:
     // dump back our rcv buffer with requested length
     uport_write(gl.dest_mem, cmd_args)
     rts
+dump5:
+    lda #10
+    jsr prep_cmd
+    ldx #6
+    uport_write_f(cmd_lit)
+    uport_read(gl.dest_mem, cmd_args)
+    memset_(cmd_lit, 0, 6)   // clear cmd for next time
+    rts
 irc_:
     lda #$06
     jsr prep_cmd
@@ -138,6 +146,7 @@ cmd_irc:    .text "IRC_"        /* IRC_ */
 cmd_dump3:  .text "DUM3"        /* DUM3<len> - synchronous read*/
 cmd_arith:  .text "ARIT"        /* ARIT<fn-code byte><args> - uC math funcs */
 cmd_esppl:  .text "PLOT"        /* PLOT<plot# as one byte> */
+cmd_sdump:  .text "DUM5"        /* DUM5 */
 .align $100 // needed to support optimized write
 cmd_lit:    .fill 4, $00        // here the command is put
 cmd_args:   .fill 256, i        // poke the args here

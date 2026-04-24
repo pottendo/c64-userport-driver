@@ -257,7 +257,6 @@ hexliterals: .text "0123456789abcdef"
 
 // macros
 .macro save_regs() {
-    inc VIC.BoC
     pha
     txa
     pha
@@ -270,7 +269,6 @@ hexliterals: .text "0123456789abcdef"
 } 
 
 .macro restore_regs() {
-    dec VIC.BoC
 #if C128
     pla
     sta $ff00
