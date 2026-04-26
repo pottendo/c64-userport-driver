@@ -33,6 +33,7 @@ main_entry:
     show_screen(1, str.screen1)
     //set2Mhz(0)   // set 1Mhz mode for more stable timing
     jsr gfx.setup
+    jsr Start
     jsr loopmenu
 exit:
     rts
