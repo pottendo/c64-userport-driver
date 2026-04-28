@@ -28,12 +28,12 @@ main_entry:
     memset_(gl.dest_mem, 0, 8000)
     memset_(gl.vic_videoram, screen.col, $3f8)
     memset_($d800, $98, $200)
-    init_screen(50, 250, MHz1, MHz2)    
+    //init_screen(50, 250, MHz1, MHz2)    
     jsr prep_sprites
     show_screen(1, str.screen1)
     //set2Mhz(0)   // set 1Mhz mode for more stable timing
     jsr gfx.setup
-    jsr Start
+    jsr vdc.vdc_init
     jsr loopmenu
 exit:
     rts
@@ -104,9 +104,12 @@ cmd3:
     jsr cmdread
     rts
 cmd4:
-    show_screen(1, str.screen1)
     memset_(gl.dest_mem, 0, 8000)
     memset_(gl.vic_videoram, screen.col, 1000)
+#if C128
+    jsr vdc.clear_graphics
+#endif    
+    show_screen(1, str.screen1)
     rts
 cmd5:
     print(str.inputnumber)

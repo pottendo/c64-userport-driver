@@ -33,13 +33,21 @@ toggle_screen:
     sprite(0, "on", -1)
     sprite(7, "on", -1)
     //init_screen(49, 153, noop, noop)
+#if C128
+    jsr vdc.set_graphics_mode
+#else    
     jsr mode
+#endif    
     rts
 !:  
     //close_screen()
     sprite(0, "off", -1)
     sprite(7, "off", -1)
+#if C128
+    jsr vdc.set_text_mode
+#else
     jsr rest
+#endif
     poke8(VIC.BgC, colsave)
     rts
 
