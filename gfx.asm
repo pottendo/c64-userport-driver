@@ -107,7 +107,7 @@ toggle_mc:
     cmp #0
     beq !hr+
 #if C128
-
+    poke16_(xwidth, 640)
 #else    
     poke8_(_p1+1, >xaddrhighmc)
     poke8_(_p2+1, >xaddrhighmc + $ff)
@@ -132,6 +132,7 @@ toggle_mc:
     rts
 !hr:
 #if C128
+    poke16_(xwidth, 640)
 
 #else
     poke8_(_p1+1, >xaddrhighhr)
@@ -209,9 +210,13 @@ plot_:
     ldy _y
 #if C128
 plot:
-    lda _x
+    sec
+    lda pixelcol
+    bne !+
+    clc
+!:  lda _x
     ldx _x + 1
-    jmp vdc.set_pixel
+    jmp vdc.set_pixel_entry
 #else
 plot:
     roms_off()
@@ -655,7 +660,64 @@ calc_mul_uc:
 #if C128
 // VDC Graphics Routines for Commodore 128
 // Converted from disassembly to KickAssembler syntax
+.macro vdc_write_mem(_x)
+{
+    pha
+    lda _x+1
+    ldx #18
+    jsr vdc.write_vdc
+    inx
+    lda _x
+    jsr vdc.write_vdc
+    pla
+    ldx #$1f
+    jsr vdc.write_vdc
+}
+
 .namespace vdc {
+.label vdc_memoffset = $8000
+savecol: .byte 0
+test_line:
+    poke16_(x, 0)
+    poke8_(y, 0)
+l:  
+    inc VIC.BoC
+    lda x
+    ldx x+1
+    ldy y
+    jsr set_pixel
+    inc VIC.BoC
+    //jmp out
+    lda x
+    and #7
+    cmp #4
+    //bne !+
+    inc16(y)
+!:    
+    inc16(x)
+    cmp16_(x, 640)
+//    cmp8_(y, 250)
+    bne l
+
+dl:    
+    poke8_(gfx.pixelcol, 1)
+    poke16_(gfx.x1, 0)
+    poke8_(gfx.y1, 0)
+    poke16_(gfx.x2, 639)
+    poke8_(gfx.y2, 255)
+    jsr gfx.draw_line
+
+    rts
+
+test_write_mem:
+    poke16_(x, vdc_memoffset)
+!:  lda #$55
+    jsr write_mem_
+    inc16(x)
+    cmp16_(x, vdc_memoffset + $4000)
+    bne !-
+    rts
+
 vdc_init:
     lda #80
     ldx #1
@@ -666,49 +728,15 @@ vdc_init:
 
     jsr enable_graphics_clear
     //jsr set_graphics_mode
-    lda #$3e
-    ldx #26
-    jsr write_vdc
-
-    lda #0
-    ldx #25
-    jsr read_vdc
-    and #%11111000
-    ora #%00000111
-    ldx #25
-    jsr write_vdc
-    poke16_(x, $0000)
-    poke16_(y, 0)
-
-    //lda #$55
-    //jsr write_mem
-l:  
-    lda x
-    ldx x+1
-    ldy y
-    jsr set_pixel
-    inc VIC.BoC
-    //jmp out
-    lda x
-    and #7
-    cmp #4
-    bne !+
-    inc y
-!:    
-    inc x
-    bne !+
-    inc x+1
-!:    
-    cmp16_(x, 640)
-//    cmp8_(y, 200)
-    bne l
-    //jsr set_text_mode
+    jsr test_write_mem
+    jsr test_line
+    jsr set_text_mode
     rts
 
 x: .word 0
 y: .word 0
 
-write_mem:
+write_mem_:
     pha
     lda x+1
     ldx #18
@@ -736,47 +764,91 @@ read_vdc:
     rts                    // Rücksprung aus Unterprogramm
 
 set_graphics_mode:
-//#if NOTUSED
+    // move vide memory to $8000
     ldx #12
-    lda #$00
+    lda #>vdc_memoffset
     jsr write_vdc
     inx
-    lda #$00
+    lda #<vdc_memoffset
     jsr write_vdc
-//#endif
     ldx #$19               // Register 25 auswählen
     lda #$80               // Bit 7 setzen - Grafikmodus
     jsr write_vdc          // Register 25 setzen
 
-    lda #0
+    // set colors
+    ldx #26
+    jsr read_vdc
+    sta savecol
+    lda #$3e
+    jsr write_vdc
+
+    // adjust smooth scrolling bits
     ldx #25
     jsr read_vdc
-    and #%11111000
+    and #%11110000
     ora #%00000111
-    ldx #25
     jsr write_vdc
+    
+    ldx #24
+    jsr read_vdc
+    and #%11100000
+    ora #%00011111
+    jsr write_vdc
+
+    // adjust interlace control
     ldx #8                 // reg 8 - interlace control
-    lda #%00000001         // 11: on
+    lda #%00000011         // 11: on
     jsr write_vdc
     rts
 
 set_text_mode:
+    lda savecol
+    ldx #26
+    jsr write_vdc
+    // move vide memory to $8000
+    ldx #12
+    lda #>0
+    jsr write_vdc
+    inx
+    lda #<0
+    jsr write_vdc
+
+    // adjust smooth scrolling bits
+//    ldx #25
+//    jsr read_vdc
+//    and #%11110000
+//    ora #%00001111
+//    jsr write_vdc
+    
+//    ldx #24
+//    jsr read_vdc
+//   and #%11100000
+//    ora #%00001111
+//    jsr write_vdc
+
+    // adjust interlace control
+    ldx #8                 // reg 8 - interlace control
+    lda #%00000000         // 11: on
+    jsr write_vdc
+
     ldx #$19               // Register 25 auswählen
     lda #$47               // ATR-Bit setzen, TXT-Bit löschen
     jsr write_vdc          // Setzen des Textmodus
     rts
 
 clear_screen:
-    ldy #$40               // $40 Blöcke
+    ldy #$7f               // $40 Blöcke
 clear_loop:
     ldx #$12               // Register 18 - Update-Hi
+    clc
     tya                    // Hi-Byte nach Akku
+    adc #>vdc_memoffset       // Addiere Hi-Byte von Zieladresse
     jsr write_vdc          // Setze Update-Hi
     ldx #$1f               // Register 31 - DATA-Register
     lda #$00               // 0, da gelöscht wird
     jsr write_vdc          // DATA-Register beschreiben
     ldx #$1e               // WORDCOUNT-Register
-    lda #$00               // Mit Null belegen
+    lda #$ff               // Mit Null belegen
     jsr write_vdc
     dey                    // Erniedrige den Zähler
     bpl clear_loop         // nächsten Block löschen
@@ -816,6 +888,7 @@ multiply_loop:
     bcc no_carry2          // Kein Übertrag
     inc $fd                // Übertrag berücksichtigen
 no_carry2:
+    adc16($fc, vdc_memoffset, $fc) // Addiere Basisadresse des Bildschirmspeichers
     ldx #$12               // Register 18 - Update-Hi
     lda $fd                // Hi-Byte der errechneten Adresse
     jsr write_vdc          // Wert setzen

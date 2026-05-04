@@ -200,11 +200,12 @@ nread:
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy receiving
     ldy #$00
     lda CIA2.PORTB  // read chr from the parallel port B
+#if C128
+    vdc_write_mem(buffer)
+#else    
     sta (buffer), y
-    inc buffer      
-    bne !+
-    inc buffer + 1
-!:
+#endif    
+    inc16(buffer)
     cmp16(buffer, len) 
     bcc outnread
     jsr stop_isr // uport_stop()
@@ -219,6 +220,7 @@ outnread:
     lda memecfg
     sta $01
 #endif
+#if NOT_USED
     tsx
     cpx #10
     bcs !+
@@ -227,6 +229,7 @@ outnread:
     wnum(30,0,P.zpp1)
  !:    
     stx $0422
+#endif    
     restore_regs()
     //jmp STD.CONTNMI
     rti
@@ -272,11 +275,12 @@ rin2:
     beq !-
     setbits(CIA2.PORTA, %00000100)  // set PA2 to high to signal we're busy
     lda CIA2.PORTB
+#if C128
+    vdc_write_mem(buffer)
+#else    
     sta (buffer), y
-    inc buffer      
-    bne !+
-    inc buffer + 1
-!:
+#endif    
+    inc16(buffer)
     cmp16(buffer, len) 
     bcc !next-
     clearbits(CIA2.PORTA, %11111011)

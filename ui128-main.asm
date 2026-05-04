@@ -342,7 +342,13 @@ cmd_vec:
 }
 
 // .segment _data
-
+#if C128
+.label XRES = 640  
+.label YRES = 200
+#else
+.label XRES = 320
+.label YRES = 200
+#endif
 cmd3_:  .text "COMMAND 3"
         .byte $0d, $00
 scrstate:   .byte $00
@@ -356,17 +362,17 @@ delay_idx:  .byte $7
 // left upper
 lu:         .word $0018         // x-coord
             .word $0018         // x-coord lower boundary
-            .word $18 + 320 - 1 // x-coord upper boundary: border + 320 - 1
+            .word $18 + XRES - 1 // x-coord upper boundary: border + XRES - 1
             .byte $32           // y-coord
             .byte $32           // y-coord lower boundary: border
-            .byte $32 + 200 - 1 // y-coord upper boundry: border + 200 - 1
+            .byte $32 + YRES - 1 // y-coord upper boundry: border + YRES - 1
 // right lower
-rl:         .word $18 + 320 - 24*2 // x-coord
+rl:         .word $18 + XRES - 24*2 // x-coord
             .word $0018 - 24*2 + 1 // x-coord lower boundary: border - sprw + 1
-            .word $18 + 320 - 24*2 // x-coord upper boundary: border + 320 - sprw
-            .byte $32 + 200 - 21*2 // ycoord
+            .word $18 + XRES - 24*2 // x-coord upper boundary: border + XRES - sprw
+            .byte $32 + YRES - 21*2 // ycoord
             .byte $32 - 21*2 + 1   // ycoord lower boundary: border - sprw + 1
-            .byte $32 + 200 - 21*2 // ycoord upper boundary: border + 200 - sprh
+            .byte $32 + YRES - 21*2 // ycoord upper boundary: border + YRES - sprh
 
 .macro sprite_move(action, addr)
 {
