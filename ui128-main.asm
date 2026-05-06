@@ -31,7 +31,7 @@ main_entry:
     //init_screen(50, 250, MHz1, MHz2)    
     jsr prep_sprites
     show_screen(1, str.screen1)
-    //set2Mhz(0)   // set 1Mhz mode for more stable timing
+    set2Mhz(1)
     jsr gfx.setup
     jsr vdc.vdc_init
     jsr loopmenu

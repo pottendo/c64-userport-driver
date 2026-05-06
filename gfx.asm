@@ -217,6 +217,9 @@ plot:
 !:  lda _x
     ldx _x + 1
     jmp vdc.set_pixel_entry
+
+prep_pcol:
+    rts
 #else
 plot:
     roms_off()
@@ -247,7 +250,6 @@ _p5:lda xmaskmc,x
     sta (P.zpp1),y
     roms_on()
     rts
-#endif
     .var i
 yaddrlow:
     .for (var y = 0; y < 200; y++)
@@ -324,9 +326,6 @@ xpixelmc00:
 xpixelhr:
     .byte $80, $40, $20, $10, $08, $04, $02, $01
 
-sine:
-    .fill 320, 100 + 100*sin(toRadians(i*360/320)) // Generates a sine curve
-
 prep_pcol:
 _d3:jmp * + 3   // operand modified for hr/mc
     lda pixelcol
@@ -357,6 +356,10 @@ _d2:lda xpixelmc11,x
     sta pixelcol
 !out:
     rts
+#endif
+
+sine:
+    .fill 320, 100 + 100*sin(toRadians(i*360/320)) // Generates a sine curve
 
 !out_plot:
     ldx #1
@@ -674,10 +677,58 @@ calc_mul_uc:
     jsr vdc.write_vdc
 }
 
+.macro vdc_setregr(_reg, _val)
+{
+    ldx #_reg
+    jsr vdc.read_vdc
+    sta vdc.regsave,x
+    lda #_val
+    jsr vdc.write_vdc
+}
+
+.macro vdc_setreg(_reg, _val)
+{
+    lda #_val
+    ldx #_reg
+    jsr vdc.write_vdc
+}
+
+.macro vdc_restorereg(_reg)
+{
+    ldx #_reg
+    lda vdc.regsave,x
+    jsr vdc.write_vdc
+}
+
+.macro vdc_readreg(_reg)
+{
+    ldx #_reg
+    jsr vdc.read_vdc
+}
+
+.macro hline(_x, _y, col)
+{
+    poke16(vdc.x, _x)
+    adc16(vdc.x, vdc.vdc_memoffset, vdc.x)
+    adc16(vdc.x, _y * 80, vdc.x)
+    ldy #80
+!:  lda #col
+    jsr vdc.write_mem_
+    inc16(vdc.x)
+    dey
+    bne !-
+}
+
 .namespace vdc {
 .label vdc_memoffset = $8000
-savecol: .byte 0
 test_line:
+    inc VIC.BoC
+    hline(0, 0, 255)
+    //hline(0, 8, 255)
+    //hline(0, 16, 255)
+    //hline(0, 24, 255)
+    inc VIC.BoC
+    rts
     poke16_(x, 0)
     poke8_(y, 0)
 l:  
@@ -698,7 +749,6 @@ l:
     cmp16_(x, 640)
 //    cmp8_(y, 250)
     bne l
-
 dl:    
     poke8_(gfx.pixelcol, 1)
     poke16_(gfx.x1, 0)
@@ -719,22 +769,13 @@ test_write_mem:
     rts
 
 vdc_init:
-    lda #80
-    ldx #1
-    jsr write_vdc
-    lda #25
-    ldx #6
-    jsr write_vdc
-
     jsr enable_graphics_clear
     //jsr set_graphics_mode
     jsr test_write_mem
     jsr test_line
     jsr set_text_mode
+    //inc VIC.BoC
     rts
-
-x: .word 0
-y: .word 0
 
 write_mem_:
     pha
@@ -764,54 +805,41 @@ read_vdc:
     rts                    // Rücksprung aus Unterprogramm
 
 set_graphics_mode:
-    // move vide memory to $8000
-    ldx #12
-    lda #>vdc_memoffset
-    jsr write_vdc
-    inx
-    lda #<vdc_memoffset
-    jsr write_vdc
-    ldx #$19               // Register 25 auswählen
-    lda #$80               // Bit 7 setzen - Grafikmodus
-    jsr write_vdc          // Register 25 setzen
-
-    // set colors
-    ldx #26
-    jsr read_vdc
-    sta savecol
-    lda #$3e
-    jsr write_vdc
-
     // adjust smooth scrolling bits
-    ldx #25
-    jsr read_vdc
-    and #%11110000
-    ora #%00000111
-    jsr write_vdc
+    // ldx #25
+    // jsr read_vdc
+    // and #%11110000
+    // ora #%00000111
+    // jsr write_vdc
     
-    ldx #24
-    jsr read_vdc
-    and #%11100000
-    ora #%00011111
-    jsr write_vdc
+    // ldx #24
+    // jsr read_vdc
+    // and #%11100000
+    // ora #%00011111
+    // jsr write_vdc
 
-    // adjust interlace control
-    ldx #8                 // reg 8 - interlace control
-    lda #%00000011         // 11: on
-    jsr write_vdc
+    // move vide memory to $8000
+    vdc_setregr(12, >vdc_memoffset)
+    vdc_setregr(13, <vdc_memoffset)
+    // color
+    vdc_setregr(26, $3e)
+    // gfx mode, smooth scrolling
+    vdc_setregr(25, %10000111)
+
+    vdc_setregr($0, 126)
+    vdc_setregr($1, 80)
+    vdc_setregr($2, 102)
+    vdc_setregr($3, $08)
+    vdc_setregr($4, $9f)
+    vdc_setregr($5, $06)
+    vdc_setregr($6, 50)
+    vdc_setregr($7, $92)
+    // interlace
+    vdc_setregr($8, %00000011)
+
     rts
 
 set_text_mode:
-    lda savecol
-    ldx #26
-    jsr write_vdc
-    // move vide memory to $8000
-    ldx #12
-    lda #>0
-    jsr write_vdc
-    inx
-    lda #<0
-    jsr write_vdc
 
     // adjust smooth scrolling bits
 //    ldx #25
@@ -826,14 +854,20 @@ set_text_mode:
 //    ora #%00001111
 //    jsr write_vdc
 
-    // adjust interlace control
-    ldx #8                 // reg 8 - interlace control
-    lda #%00000000         // 11: on
-    jsr write_vdc
+    vdc_restorereg($0)
+    vdc_restorereg($1)
+    vdc_restorereg($2)
+    vdc_restorereg($3)
+    vdc_restorereg($4)
+    vdc_restorereg($5)
+    vdc_restorereg($6)
+    vdc_restorereg($7)
+    vdc_restorereg($8)
+    vdc_restorereg(25)
+    vdc_restorereg(12)
+    vdc_restorereg(13)
+    vdc_restorereg(26)
 
-    ldx #$19               // Register 25 auswählen
-    lda #$47               // ATR-Bit setzen, TXT-Bit löschen
-    jsr write_vdc          // Setzen des Textmodus
     rts
 
 clear_screen:
@@ -844,6 +878,9 @@ clear_loop:
     tya                    // Hi-Byte nach Akku
     adc #>vdc_memoffset       // Addiere Hi-Byte von Zieladresse
     jsr write_vdc          // Setze Update-Hi
+    inx
+    lda #0
+    jsr write_vdc          // Setze Update-Lo auf Null
     ldx #$1f               // Register 31 - DATA-Register
     lda #$00               // 0, da gelöscht wird
     jsr write_vdc          // DATA-Register beschreiben
@@ -951,6 +988,11 @@ set_pixel_entry:
     stx $fb                // Abspeichern X-Hi
     sty $fc                // Abspeichern Y-Koordinate
     jmp plot_pixel         // Punkt setzen/löschen
+
+x: .word 0
+y: .word 0
+savecol: .byte 0
+regsave: .fill 36, 0
 
 }
 #endif
