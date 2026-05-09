@@ -36,7 +36,7 @@ _x:             .word 640  // or 320 for hires - counter for plot
 xwidth:         .word 160  // or 320 for hires - toggled by mc/hr toggle
 _x:             .word 160  // or 320 for hires - counter for plot
 #endif
-_y:             .byte 00
+_y:             .word 00
 pixelcol:       .byte $01
 x1: .word 0
 y1: .byte 100
@@ -214,8 +214,9 @@ plot:
     lda pixelcol
     bne !+
     clc
-!:  lda _x
-    ldx _x + 1
+!:  poke16(vdc.x, _x)
+    //poke16(vdc.y, _y)
+    sty vdc.y
     jmp vdc.set_pixel_entry
 
 prep_pcol:
@@ -706,49 +707,84 @@ calc_mul_uc:
     jsr vdc.read_vdc
 }
 
+.macro vdc_save_regs()
+{
+    jsr vdc.save_regs
+}
+
+.macro vdc_restore_regs(a)
+{
+    poke16_(vdc._rr+1, a)
+    jsr vdc.restore_regs
+}
+
 .macro hline(_x, _y, col)
 {
-    poke16(vdc.x, _x)
+    .var __isodd = mod(_y, 2)
+    .var __y = 0
+    .var _ya  = 0
+    .eval __y = __isodd * 32250
+    .eval _ya = ((_y / 2) * 100) + __y
+    poke16_(vdc.x, _x)
     adc16(vdc.x, vdc.vdc_memoffset, vdc.x)
-    adc16(vdc.x, _y * 80, vdc.x)
-    ldy #80
-!:  lda #col
+    adc16(vdc.x, _ya, vdc.x)
+    ldy #50
+!:  delay(1000)
+    lda #col
     jsr vdc.write_mem_
     inc16(vdc.x)
     dey
     bne !-
 }
 
+.macro vline(_x, _y, col)
+{
+
+}
+ 
+.macro vdc_set_pixel(_x, _y)
+{
+    poke16_($fa, _x)
+    poke16_($fc, _y)
+    sec
+    jsr vdc.plot_pixel800x576
+}
+
 .namespace vdc {
-.label vdc_memoffset = $8000
+.label vdc_memoffset = 0400
 test_line:
     inc VIC.BoC
-    hline(0, 0, 255)
-    //hline(0, 8, 255)
-    //hline(0, 16, 255)
-    //hline(0, 24, 255)
+//    hline(0, 0, 255)
+//    hline(0, 1, 255)
+    hline(50, 300, 255)
+    hline(50, 301, 255)
+    // hline(0, 574, 255)
+    // hline(0, 575, 255)
+    
+    vdc_set_pixel(0, 0)
+    vdc_set_pixel(799, 0)
+    vdc_set_pixel(0, 575)
+    vdc_set_pixel(799, 575)
     inc VIC.BoC
-    rts
     poke16_(x, 0)
-    poke8_(y, 0)
+    poke8_(y, 4)
 l:  
     inc VIC.BoC
-    lda x
-    ldx x+1
-    ldy y
     jsr set_pixel
     inc VIC.BoC
     //jmp out
     lda x
-    and #7
-    cmp #4
-    //bne !+
+    and #3
+    cmp #1
+    bne !+
     inc16(y)
 !:    
     inc16(x)
-    cmp16_(x, 640)
-//    cmp8_(y, 250)
+    cmp16_(x, 799)
+    //inc16(y)
+    //cmp16_(y, 575)
     bne l
+    rts
 dl:    
     poke8_(gfx.pixelcol, 1)
     poke16_(gfx.x1, 0)
@@ -761,19 +797,20 @@ dl:
 
 test_write_mem:
     poke16_(x, vdc_memoffset)
-!:  lda #$55
+!:  lda #$aa
     jsr write_mem_
     inc16(x)
-    cmp16_(x, vdc_memoffset + $4000)
+    cmp16_(x, vdc_memoffset + $ffff)
     bne !-
     rts
 
 vdc_init:
+    vdc_save_regs()
     jsr enable_graphics_clear
     //jsr set_graphics_mode
-    jsr test_write_mem
+    //jsr test_write_mem
     jsr test_line
-    jsr set_text_mode
+    //jsr set_text_mode
     //inc VIC.BoC
     rts
 
@@ -819,24 +856,26 @@ set_graphics_mode:
     // jsr write_vdc
 
     // move vide memory to $8000
-    vdc_setregr(12, >vdc_memoffset)
-    vdc_setregr(13, <vdc_memoffset)
-    // color
-    vdc_setregr(26, $3e)
-    // gfx mode, smooth scrolling
-    vdc_setregr(25, %10000111)
+    // vdc_setregr(12, >vdc_memoffset)
+    // vdc_setregr(13, <vdc_memoffset)
+    // // color
+    // vdc_setregr(26, $3e)
+    // // gfx mode, smooth scrolling
+    // vdc_setregr(25, %10000111)
 
-    vdc_setregr($0, 126)
-    vdc_setregr($1, 80)
-    vdc_setregr($2, 102)
-    vdc_setregr($3, $08)
-    vdc_setregr($4, $9f)
-    vdc_setregr($5, $06)
-    vdc_setregr($6, 50)
-    vdc_setregr($7, $92)
-    // interlace
-    vdc_setregr($8, %00000011)
-
+    // vdc_setregr($0, 126)
+    // vdc_setregr($1, 80)
+    // vdc_setregr($2, 102)
+    // vdc_setregr($3, $08)
+    // vdc_setregr($4, $9f)
+    // vdc_setregr($5, $06)
+    // vdc_setregr($6, 50)
+    // vdc_setregr($7, $92)
+    // // interlace
+    // vdc_setregr($8, %00000011)
+    vdc_restore_regs(vdcregs800x600)
+    vdc_setreg(26, $f0)
+    
     rts
 
 set_text_mode:
@@ -854,29 +893,30 @@ set_text_mode:
 //    ora #%00001111
 //    jsr write_vdc
 
-    vdc_restorereg($0)
-    vdc_restorereg($1)
-    vdc_restorereg($2)
-    vdc_restorereg($3)
-    vdc_restorereg($4)
-    vdc_restorereg($5)
-    vdc_restorereg($6)
-    vdc_restorereg($7)
-    vdc_restorereg($8)
-    vdc_restorereg(25)
-    vdc_restorereg(12)
-    vdc_restorereg(13)
-    vdc_restorereg(26)
-
+    // vdc_restorereg($0)
+    // vdc_restorereg($1)
+    // vdc_restorereg($2)
+    // vdc_restorereg($3)
+    // vdc_restorereg($4)
+    // vdc_restorereg($5)
+    // vdc_restorereg($6)
+    // vdc_restorereg($7)
+    // vdc_restorereg($8)
+    // vdc_restorereg(25)
+    // vdc_restorereg(12)
+    // vdc_restorereg(13)
+    // vdc_restorereg(26)
+    vdc_restore_regs(vdcregs)
+    jsr $ce0c
     rts
 
 clear_screen:
-    ldy #$7f               // $40 Blöcke
+    ldy #127               // $40 Blöcke
 clear_loop:
     ldx #$12               // Register 18 - Update-Hi
     clc
     tya                    // Hi-Byte nach Akku
-    adc #>vdc_memoffset       // Addiere Hi-Byte von Zieladresse
+    adc #>(vdc_memoffset)      // Addiere Hi-Byte von Zieladresse
     jsr write_vdc          // Setze Update-Hi
     inx
     lda #0
@@ -885,13 +925,27 @@ clear_loop:
     lda #$00               // 0, da gelöscht wird
     jsr write_vdc          // DATA-Register beschreiben
     ldx #$1e               // WORDCOUNT-Register
-    lda #$ff               // Mit Null belegen
+    lda #$00               // Mit Null belegen
+    jsr write_vdc
+    ldx #$12
+    clc
+    tya
+    adc #>(vdc_memoffset + $8000)      // Addiere Hi-Byte von Zieladresse
+    jsr write_vdc          // Setze Update-Hi
+    inx
+    lda #0
+    jsr write_vdc          // Setze Update-Lo auf Null
+    ldx #$1f               // Register 31 - DATA-Register
+    lda #$00               // 0, da gelöscht wird
+    jsr write_vdc          // DATA-Register beschreiben
+    ldx #$1e               // WORDCOUNT-Register
+    lda #$00               // Mit Null belegen
     jsr write_vdc
     dey                    // Erniedrige den Zähler
     bpl clear_loop         // nächsten Block löschen
     rts                    // Rücksprung aus Löschroutine
 
-plot_pixel:
+plot_pixel640x200:
     php                    // Carry: Zeichen für Setzen/Löschen
     lda $fa                // Lo-Byte von X-Koordinate
     sta $fe                // zwischenspeichern
@@ -960,6 +1014,87 @@ write_back:
     jsr read_vdc
     rts
 
+plot_pixel800x576:
+    php                    // Carry: Zeichen für Setzen/Löschen
+    lda $fa                // Lo-Byte von X-Koordinate
+    sta $fe                // zwischenspeichern
+    lsr $fb                // Hi-Byte von X / 2
+    ror $fa                // Carry nach Lo-Byte übertragen
+    lsr $fb                // s.o.
+    ror $fa                // s.o.
+    lsr $fb                // ergibt zusammen INT(X/8)
+    ror $fa
+    // y / 2
+    lsr $fd
+    ror $fc                // Y-Koordinate in Akku merken
+    php
+    // y * 100
+    lda $fc                // Y-Koordinate in Akku merken
+    asl $fc                // Y mal zwei
+    rol $fd                // Carry übertragen
+    asl $fc                // nochmal mal zwei ergibt
+    rol $fd                // insgesamt mal 4, plus einmal Y
+    pha
+    poke16(_t4, $fc) // Y*4 in temporäres Register
+    pla
+    asl $fc                // Y mal zwei
+    rol $fd                // Carry übertragen
+    asl $fc                // Y mal zwei
+    rol $fd                // Carry übertragen
+    asl $fc                // Y mal zwei
+    rol $fd                // Carry übertragen
+    pha
+    poke16(_t32, $fc) // Y*4 in temporäres Register
+    pla
+    asl $fc                // Y mal zwei
+    rol $fd                // Carry übertragen
+    adc16m($fc, _t4, $fc)
+    adc16m($fc, _t32, $fc) // *100 in total
+    plp
+    bcc !+
+    adc16($fc, 32300, $fc) // Addiere 32200 für die ungeraden Zeilen
+!:   
+    lda $fa                // INT(X/8)
+    adc $fc                // Addiere zu Y*100
+    sta $fc                // und abspeichern
+    bcc !+          // Kein Übertrag
+    inc $fd                // Übertrag berücksichtigen
+!:
+    adc16($fc, vdc_memoffset, $fc) // Addiere Basisadresse des Bildschirmspeichers
+    ldx #$12               // Register 18 - Update-Hi
+    lda $fd                // Hi-Byte der errechneten Adresse
+    jsr write_vdc          // Wert setzen
+    inx                    // Update-Lo
+    lda $fc                // Lo-Byte der Adresse
+    jsr write_vdc          // Setzen des Lo-Bytes
+    ldx #$1f               // DATA-Register
+    jsr read_vdc           // Holen des Speicherinhaltes
+    pha                    // Rette Wert auf Stack
+    lda $fe                // Hole X-Koordinate (Lo)
+    and #$07               // Nur der Rest X AND 7 ist wichtig
+    tax                    // als Pointer nach X
+    pla                    // Hole Speicherwert zurück
+    plp                    // Hole Carry zurück
+    bcs !+          // Setzen des Punktes
+    and clear_mask,x       // Löschen des Punktes
+    bcc write_back2
+!:
+    ora set_mask,x         // Setzen des Punktes
+write_back2:
+    pha                    // Rette neuen Wert
+    ldx #$12               // Update-Hi
+    lda $fd                // Hi-Byte von Zieladresse
+    jsr write_vdc          // Setzen des Wertes
+    inx                    // Update-Lo
+    lda $fc                // Lo-Byte der Adresse
+    jsr write_vdc          // Setzen des Lo-Bytes
+    ldx #$1f               // DATA-Register
+    pla                    // Hole Wert wieder von Stack
+    jsr write_vdc          // Setzen des neuen Wertes
+    ldx #$12
+    jsr read_vdc
+    rts
+
 set_mask:
     .byte $80, $40, $20, $10, $08, $04, $02, $01 // Tabelle zum Setzen der Punkte
 
@@ -984,15 +1119,41 @@ set_pixel:
     sec                    // Setze Carry für Punkt
 
 set_pixel_entry:
-    sta $fa                // Abspeichern X-Lo
-    stx $fb                // Abspeichern X-Hi
-    sty $fc                // Abspeichern Y-Koordinate
-    jmp plot_pixel         // Punkt setzen/löschen
+    poke16($fa, x)
+    poke16($fc, y)
+    jmp plot_pixel800x576         // Punkt setzen/löschen
 
+save_regs:
+    ldx #35
+!:    
+    jsr read_vdc          // Lese Register 35
+    sta vdcregs,x
+    dex
+    bpl !-                 // Wiederhole für alle Register  
+    rts
+
+restore_regs:
+    ldx #35
+_rr:    
+    lda vdcregs,x
+    jsr write_vdc         // Schreibe Register 35
+    dex
+    bpl _rr                 // Wiederhole für alle Register  
+    rts
+
+.align $100
 x: .word 0
 y: .word 0
 savecol: .byte 0
 regsave: .fill 36, 0
+_t4: .word 0
+_t32: .word 0
+_t64: .word 0
+vdcregs800x600:             // credits to xxx
+    .byte $7f, $64, $70, $89,  $5c, $e6, $5c, $57,  $ff, $e6, $a0, $e7,  $00, $00, $06, $90
+    .byte $00, $00, $f3, $5d,  $08, $00, $78, $e8,  $20, $87, $ba, $00,  $ff, $e7, $00, $00
+    .byte $0d, $f0, $7d, $6a
 
+vdcregs: .fill 36, $ff
 }
 #endif

@@ -25,9 +25,9 @@ main_entry:
     poke8_(STD.MMU, 0)    // mode 15, all Rom/IO/RAM visible
     //poke8_(STD.MMURAW + 4, $0c) // preload register normal, $8000-$bfff RAM
     jsr parport.init
-    memset_(gl.dest_mem, 0, 8000)
-    memset_(gl.vic_videoram, screen.col, $3f8)
-    memset_($d800, $98, $200)
+    //memset_(gl.dest_mem, 0, 8000)
+    //memset_(gl.vic_videoram, screen.col, $3f8)
+    //memset_($d800, $98, $200)
     //init_screen(50, 250, MHz1, MHz2)    
     jsr prep_sprites
     show_screen(1, str.screen1)
@@ -104,10 +104,11 @@ cmd3:
     jsr cmdread
     rts
 cmd4:
-    memset_(gl.dest_mem, 0, 8000)
-    memset_(gl.vic_videoram, screen.col, 1000)
 #if C128
     jsr vdc.clear_graphics
+#else    
+    memset_(gl.dest_mem, 0, 8000)
+    memset_(gl.vic_videoram, screen.col, 1000)
 #endif    
     show_screen(1, str.screen1)
     rts
