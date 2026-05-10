@@ -26,15 +26,17 @@ pi80th:         .fill 5, 0 // MFLPT format, 5 byte
 pi80th_FLPT:    .fill 6, 0 // FLPT format, 6 byte
 scale:          .fill 5, 0 // FP represenatation of C2
 scale_FLPT:     .fill 6, 0 // FP represenatation of C2
-C1:             .byte 100  // y shift
-C2:             .byte 100  // y scale
 cmd_len:        .byte 11   // full command len incl. 4 byte ARIT - minimum 11byte: 4 + 1 + 6 (ARIT + fn# + one arg)
 #if C128
-xwidth:         .word 640  // or 320 for hires - toggled by mc/hr toggle
-_x:             .word 640  // or 320 for hires - counter for plot
+xwidth:         .word 800  // or 320 for hires - toggled by mc/hr toggle
+_x:             .word 800  // or 320 for hires - counter for plot
+C1:             .word 288  // y shift
+C2:             .word 280  // y scale
 #else
 xwidth:         .word 160  // or 320 for hires - toggled by mc/hr toggle
 _x:             .word 160  // or 320 for hires - counter for plot
+C1:             .byte 100  // y shift
+C2:             .byte 100  // y scale
 #endif
 _y:             .word 00
 pixelcol:       .byte $01
@@ -97,8 +99,12 @@ setup:
     jsr STD.FAC2STR
     jsr STD.PRTSTR
 
+#if C128
+    poke16_(C2, 280)
+#else        
     ldy #100    // initialze scale with 100
     sty C2
+#endif    
     rts
 
 // acc == 1 -> mc, acc == 0 -> hires
@@ -164,8 +170,14 @@ toggle_mc:
     rts
 
 doit:
+#if C128
+    ldy C2
+    lda C2 + 1
+    jsr STD.LINT
+#else 
     ldy C2
     jsr STD.LUY
+#endif    
     ldx #<scale
     ldy #>scale
     jsr STD.SFAC1
@@ -181,6 +193,14 @@ doit:
     cmp16_(_x, 0)
     bne !- 
 
+#if C128
+    sbc16(C2, 10, C2)
+    cmp16_(C2, 0)
+    beq !out+
+    jmp doit
+!out:
+    poke16_(C2,0)
+#else
     lda C2
     sbc8(C2, 10, C2)
     cmp #0
@@ -189,6 +209,7 @@ doit:
 !out:
     ldy #100    // reset scale to 100
     sty C2
+#endif    
     rts
 
 plot_pixel:
@@ -216,7 +237,6 @@ plot:
     clc
 !:  poke16(vdc.x, _x)
     //poke16(vdc.y, _y)
-    sty vdc.y
     jmp vdc.set_pixel_entry
 
 prep_pcol:
@@ -636,7 +656,14 @@ calc_sine:
     lda C1        
     clc
     adc STD.FAC1 + 4 // $65         // F2INT -> BigEndian $62-$65
+#if C128
+    sta vdc.y
+    lda C1 + 1
+    adc STD.FAC1 + 3 // Hibyte for C128
+    sta vdc.y + 1
+#else    
     tay
+#endif
     rts
 
 // sin (FAC1)
