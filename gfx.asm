@@ -745,7 +745,7 @@ calc_mul_uc:
     jsr vdc.restore_regs
 }
 
-.macro hline(_x, _y, col)
+.macro hline800x576(_x, _y, col)
 {
     .var __isodd = mod(_y, 2)
     .var __y = 0
@@ -756,6 +756,21 @@ calc_mul_uc:
     adc16(vdc.x, vdc.vdc_memoffset, vdc.x)
     adc16(vdc.x, _ya, vdc.x)
     ldy #50
+!:  delay(1000)
+    lda #col
+    jsr vdc.write_mem_
+    inc16(vdc.x)
+    dey
+    bne !-
+}
+
+.macro hline640x400(_x, _y, col)
+{
+    .var _ya  = 0
+    .eval _ya = _y * 80
+    poke16_(vdc.x, _x)
+    adc16(vdc.x, _ya, vdc.x)
+    ldy #79
 !:  delay(1000)
     lda #col
     jsr vdc.write_mem_
@@ -778,20 +793,23 @@ calc_mul_uc:
 }
 
 .namespace vdc {
-.label vdc_memoffset = 0400
-test_line:
+.label vdc_memoffset = 0000
+test_line800x576:
     inc VIC.BoC
-//    hline(0, 0, 255)
-//    hline(0, 1, 255)
-    hline(50, 300, 255)
-    hline(50, 301, 255)
-    // hline(0, 574, 255)
-    // hline(0, 575, 255)
+    hline800x576(10, 0, 255)
+    hline800x576(50, 300, 255)
+    hline800x576(50, 301, 255)
+    hline800x576(10, 574, 255)
+    hline800x576(10, 575, 255)
+    hline800x576(10, 599, 255)
+    hline800x576(10, 598, 255)
     
     vdc_set_pixel(0, 0)
     vdc_set_pixel(799, 0)
     vdc_set_pixel(0, 575)
     vdc_set_pixel(799, 575)
+    vdc_set_pixel(0, 599)
+    vdc_set_pixel(799, 599)
     inc VIC.BoC
     poke16_(x, 0)
     poke8_(y, 4)
@@ -822,6 +840,13 @@ dl:
 
     rts
 
+test_line640x400:
+    inc VIC.BoC
+    hline640x400(0, 0, 255)
+    hline640x400(0, 3, $0f)
+    hline640x400(0, 286, $f0)
+    rts
+    
 test_write_mem:
     poke16_(x, vdc_memoffset)
 !:  lda #$aa
@@ -836,7 +861,8 @@ vdc_init:
     jsr enable_graphics_clear
     //jsr set_graphics_mode
     //jsr test_write_mem
-    jsr test_line
+    jsr test_line800x576
+    //jsr test_line640x400
     //jsr set_text_mode
     //inc VIC.BoC
     rts
@@ -900,7 +926,8 @@ set_graphics_mode:
     // vdc_setregr($7, $92)
     // // interlace
     // vdc_setregr($8, %00000011)
-    vdc_restore_regs(vdcregs800x600)
+    vdc_restore_regs(vdcregs800x576)
+    //vdc_restore_regs(vdcregs640x400)
     vdc_setreg(26, $f0)
     
     rts
@@ -1176,10 +1203,15 @@ regsave: .fill 36, 0
 _t4: .word 0
 _t32: .word 0
 _t64: .word 0
-vdcregs800x600:             // credits to xxx
+vdcregs800x576:             // credits to xxx
     .byte $7f, $64, $70, $89,  $5c, $e6, $5c, $57,  $ff, $e6, $a0, $e7,  $00, $00, $06, $90
     .byte $00, $00, $f3, $5d,  $08, $00, $78, $e8,  $20, $87, $ba, $00,  $ff, $e7, $00, $00
     .byte $0d, $f0, $7d, $6a
+
+vdcregs640x400:    
+    .byte $7e,$50,$66,$49, $d4,$e0,$c9,$c9, $fc,$e1,$a0,$e7, $00,$00,$04,$b0
+    .byte $00,$00,$7d,$01, $80,$00,$78,$e8, $20,$c7,$f0,$00, $ff,$e7,$00,$00
+    .byte $0c,$10,$7d,$64
 
 vdcregs: .fill 36, $ff
 }
