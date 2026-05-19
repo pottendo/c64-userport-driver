@@ -123,15 +123,11 @@ cmd5:
     bne !-
     rts
 cmd6:
-    sbc16(lu, $18, tmp)
-    poke16(cmd_args, tmp)
-    sbc8(lu + 6, $32, tmp)    
-    poke8(cmd_args + 2, tmp)
+    poke16(cmd_args, lu)
+    poke16(cmd_args + 2, lu + 6)
 
-    sbc16(rl, 24 - $18 * 2, tmp)  // -border($18) + spr-width(24px)
-    poke16(cmd_args + 3, tmp)
-    sbc8(rl + 6, 31*0 + 8, tmp)     // -border($32) + spr-height(21px)
-    poke8(cmd_args + 5, tmp)
+    poke16(cmd_args + 4, rl)
+    poke16(cmd_args + 6, rl + 6)
     jsr mandel
     rts
 cmd7:
@@ -344,8 +340,8 @@ cmd_vec:
 
 // .segment _data
 #if C128
-.label XRES = 640  
-.label YRES = 200
+.label XRES = 800  
+.label YRES = 600
 #else
 .label XRES = 320
 .label YRES = 200
@@ -361,19 +357,19 @@ delay_loop: .word $0400
 delays:     .word $100, $800, $800, $1000
 delay_idx:  .byte $7
 // left upper
-lu:         .word $0018         // x-coord
-            .word $0018         // x-coord lower boundary
-            .word $18 + XRES - 1 // x-coord upper boundary: border + XRES - 1
-            .byte $32           // y-coord
-            .byte $32           // y-coord lower boundary: border
-            .byte $32 + YRES - 1 // y-coord upper boundry: border + YRES - 1
+lu:         .word 0             // x-coord
+            .word 0             // x-coord lower boundary
+            .word XRES - 1 // x-coord upper boundary: border + XRES - 1
+            .word 0       // y-coord
+            .word 0      // y-coord lower boundary: border
+            .word YRES - 1 // y-coord upper boundry: border + YRES - 1
 // right lower
-rl:         .word $18 + XRES - 24*2 // x-coord
-            .word $0018 - 24*2 + 1 // x-coord lower boundary: border - sprw + 1
-            .word $18 + XRES - 24*2 // x-coord upper boundary: border + XRES - sprw
-            .byte $32 + YRES - 21*2 // ycoord
-            .byte $32 - 21*2 + 1   // ycoord lower boundary: border - sprw + 1
-            .byte $32 + YRES - 21*2 // ycoord upper boundary: border + YRES - sprh
+rl:         .word XRES - 1 // x-coord
+            .word XRES -1  // x-coord lower boundary: border - sprw + 1
+            .word 1 // x-coord upper boundary: border + XRES - sprw
+            .word YRES - 1 // ycoord
+            .word 1   // ycoord lower boundary: border - sprw + 1
+            .word YRES - 1 // ycoord upper boundary: border + YRES - sprh
 
 .macro sprite_move(action, addr)
 {

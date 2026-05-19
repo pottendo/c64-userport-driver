@@ -1,7 +1,7 @@
 #import "pottendos_utils.asm"
 #import "globals.asm"
 
-#define NATIVE_FP
+//#define NATIVE_FP
 
 .namespace gfx {
 
@@ -236,7 +236,7 @@ plot:
     bne !+
     clc
 !:  poke16(vdc.x, _x)
-    //poke16(vdc.y, _y)
+    poke16(vdc.y, _y)
     jmp vdc.set_pixel_entry
 
 prep_pcol:
@@ -398,11 +398,12 @@ do_cmds_entry:
     cmp #plPLOT
     bne !+
     // plot
-    ldx #4
+    ldx #5
     uport_sread_f(gl.gfx_buf)
     poke8(pixelcol, gl.gfx_buf)
     poke16(_x, gl.gfx_buf + 1)
     ldy gl.gfx_buf + 3
+    poke16(_y, gl.gfx_buf + 3)
     jsr plot
     jmp do_cmds
 !:  
@@ -657,10 +658,10 @@ calc_sine:
     clc
     adc STD.FAC1 + 4 // $65         // F2INT -> BigEndian $62-$65
 #if C128
-    sta vdc.y
+    sta _y
     lda C1 + 1
     adc STD.FAC1 + 3 // Hibyte for C128
-    sta vdc.y + 1
+    sta _y + 1
 #else    
     tay
 #endif

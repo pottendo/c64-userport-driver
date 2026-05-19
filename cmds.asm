@@ -75,7 +75,7 @@ cmdread:
 mandel:
     lda #$04
     jsr prep_cmd
-    ldx #10         // 4 byte cmd, 2x3byte for coordinates
+    ldx #12         // 4 byte cmd, 2x3byte for coordinates
     uport_write_f(cmd_lit)
     //poke16_(cmd_args, 8000)
     //uport_sread(gl.dest_mem, cmd_args)
